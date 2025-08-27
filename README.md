@@ -337,9 +337,3 @@ RAZZ{y0U_H@v3_f()UNd_$QL_!NJ3CT10N}
 🎓 For **educational purposes only** – use responsibly.  
 
 ---
-
-✅ **Working Docker commands that I tested successfully:**  
-```bash
-sudo docker build -t razz_bank_challenge .
-sudo docker run -p 5000:5000 razz_bank_challenge
-```
