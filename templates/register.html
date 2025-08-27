@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Razz Bank{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="max-width: 500px; margin: 2rem auto;">
+        <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">Open Your Account</h2>
+        
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-group">
+                <label for="full_name">Full Name:</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" required 
+                       placeholder="Enter your full legal name">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" name="email" class="form-control" required 
+                       placeholder="Enter your email address">
+            </div>
+            
+            <div class="form-group">
+                <label for="username">Choose Username:</label>
+                <input type="text" id="username" name="username" class="form-control" required 
+                       placeholder="Choose a unique username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" class="form-control" required 
+                       placeholder="Create a strong password">
+            </div>
+            
+            <div style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                <strong>Password Requirements:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>At least 8 characters long</li>
+                    <li>Mix of letters and numbers</li>
+                    <li>Special characters recommended</li>
+                </ul>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                Create Account
+            </button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <p>Already have an account? <a href="{{ url_for('login') }}" style="color: #667eea;">Login here</a></p>
+        </div>
+        
+        <div class="warning" style="margin-top: 1rem; font-size: 0.9rem;">
+            By creating an account, you agree to our Terms of Service and Privacy Policy.
+        </div>
+    </div>
+</div>
+{% endblock %}

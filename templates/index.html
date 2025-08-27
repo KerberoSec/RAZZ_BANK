@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <div class="container">
+        <h1>Welcome to Razz Bank</h1>
+        <p>Your trusted partner in secure digital banking</p>
+        <div style="margin-top: 2rem;">
+            <a href="{{ url_for('login') }}" class="btn btn-primary" style="margin-right: 1rem;">Login to Your Account</a>
+            <a href="{{ url_for('register') }}" class="btn btn-secondary">Open New Account</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="features">
+        <div class="feature-card">
+            <h3>🔒 Advanced Security</h3>
+            <p>State-of-the-art encryption and multi-factor authentication to keep your money safe.</p>
+        </div>
+        <div class="feature-card">
+            <h3>💰 Digital Wallet</h3>
+            <p>Manage your finances with our intuitive digital wallet and instant transfers.</p>
+        </div>
+        <div class="feature-card">
+            <h3>📱 Mobile Banking</h3>
+            <p>Access your accounts anywhere, anytime with our secure mobile platform.</p>
+        </div>
+        <div class="feature-card">
+            <h3>🌐 Global Reach</h3>
+            <p>International transfers and multi-currency support for global customers.</p>
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 3rem;">
+        <h2>Why Choose Razz Bank?</h2>
+        <p>Founded in 2020, Razz Bank has been at the forefront of digital banking innovation. With over 1 million satisfied customers worldwide, we provide:</p>
+        <ul style="margin: 1rem 0; padding-left: 2rem;">
+            <li>Zero monthly fees on basic accounts</li>
+            <li>24/7 customer support</li>
+            <li>Competitive interest rates</li>
+            <li>Advanced fraud protection</li>
+            <li>Seamless integration with popular apps</li>
+        </ul>
+    </div>
+    
+    <div class="warning">
+        <strong>Security Notice:</strong> Never share your login credentials with anyone. Razz Bank will never ask for your password via email or phone.
+    </div>
+</div>
+{% endblock %}

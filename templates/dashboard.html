@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Razz Bank{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 1.5rem;">Welcome, {{ user[3] }}!</h2>
+            
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 0.5rem;">Account Balance</h3>
+                <p style="font-size: 2rem; font-weight: bold; margin: 0;">${{ "%.2f"|format(user[6]) }}</p>
+                <p style="margin: 0; opacity: 0.8;">Account: {{ user[5] }}</p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <button class="btn btn-primary" style="padding: 1rem;">Transfer Money</button>
+                <button class="btn btn-secondary" style="padding: 1rem;">View Statements</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="color: #333; margin-bottom: 1rem;">Quick Actions</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <a href="#" class="btn btn-primary" style="text-align: center;">Pay Bills</a>
+                <a href="#" class="btn btn-secondary" style="text-align: center;">Deposit Check</a>
+                <a href="#" class="btn btn-secondary" style="text-align: center;">Account Settings</a>
+                <a href="#" class="btn btn-secondary" style="text-align: center;">Help & Support</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3 style="color: #333; margin-bottom: 1rem;">Recent Activity</h3>
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <p style="margin: 0; color: #666;">No recent transactions to display.</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #666;">Your account activity will appear here once you start using our services.</p>
+        </div>
+    </div>
+    
+    <div class="warning" style="margin-top: 2rem;">
+        <strong>Account Security:</strong> Your session will automatically expire after 30 minutes of inactivity for your protection.
+    </div>
+</div>
+{% endblock %}
