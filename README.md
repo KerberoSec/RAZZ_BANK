@@ -38,7 +38,7 @@ You can set up the challenge using **Docker (recommended)**, manually with **Pyt
 
 ```bash
 # Clone or download the project files
-git clone <repository-url>
+git clone git@github.com:KerberoSec/RAZZ_BANK.git
 cd razz-bank-sqli-challenge
 
 # Build the Docker image
