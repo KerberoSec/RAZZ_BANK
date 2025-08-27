@@ -45,7 +45,7 @@ cd razz-bank-sqli-challenge
 sudo docker build -t razz_bank_challenge .
 
 # Run the container
-sudo docker run -d --name razz_bank -p 5000:5000 razz_bank_challenge:latest
+sudo docker run -p 5000:5000 razz_bank_challenge
 
 # Verify if the container is running
 sudo docker ps
