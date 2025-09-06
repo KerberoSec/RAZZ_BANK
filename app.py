@@ -232,6 +232,43 @@ def backup_fake():
 <p>Access denied. This directory contains sensitive backups.</p>
 </body></html>''', 403
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Docker and load balancers"""
+    try:
+        # Test database connection
+        conn = sqlite3.connect('razz_bank.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        conn.close()
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'database': 'connected',
+            'version': '1.0.0'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        }), 503
+
+@app.route('/api/status')
+def api_status():
+    """API status endpoint"""
+    return jsonify({
+        'api_version': '1.0.0',
+        'status': 'operational',
+        'endpoints': {
+            'login': '/login',
+            'register': '/register',
+            'dashboard': '/dashboard',
+            'health': '/health'
+        }
+    })
+
 if __name__ == '__main__':
     init_db()
     app.run(debug=False, host='0.0.0.0', port=5000)

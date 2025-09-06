@@ -1,0 +1,224 @@
+services:
+  # Main banking application
+  razz-bank-app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: razz_bank_web
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - DATABASE_URL=sqlite:///razz_bank.db
+    volumes:
+      - app_data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - razz_bank_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database for production use
+  postgres:
+    image: postgres:15-alpine
+    container_name: razz_bank_postgres
+    environment:
+      POSTGRES_DB: razz_bank_prod
+      POSTGRES_USER: bank_user
+      POSTGRES_PASSWORD: secure_bank_password_2025
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - razz_bank_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bank_user -d razz_bank_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session management and caching
+  redis:
+    image: redis:7-alpine
+    container_name: razz_bank_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - razz_bank_network
+    command: redis-server --appendonly yes --requirepass redis_secure_password_2025
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: razz_bank_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    restart: unless-stopped
+    depends_on:
+      - razz-bank-app
+    networks:
+      - razz_bank_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database administration tool
+  adminer:
+    image: adminer:latest
+    container_name: razz_bank_adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - razz_bank_network
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: razz_bank_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - razz_bank_network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: razz_bank_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin_grafana_2025
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - razz_bank_network
+
+  # Log aggregation with Fluentd
+  fluentd:
+    build:
+      context: ./fluentd
+      dockerfile: Dockerfile
+    container_name: razz_bank_fluentd
+    volumes:
+      - ./logs:/fluentd/log
+      - ./fluentd/conf:/fluentd/etc
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    restart: unless-stopped
+    networks:
+      - razz_bank_network
+
+  # Development database (SQLite) - for development only
+  razz-bank-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: razz_bank_dev
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=true
+      - DATABASE_URL=sqlite:///razz_bank.db
+    volumes:
+      - .:/app
+      - dev_data:/app/data
+    restart: unless-stopped
+    networks:
+      - razz_bank_network
+    profiles:
+      - development
+
+  # Load balancer for high availability
+  haproxy:
+    image: haproxy:2.6-alpine
+    container_name: razz_bank_haproxy
+    ports:
+      - "8081:80"
+      - "8082:8080"  # HAProxy stats
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    restart: unless-stopped
+    depends_on:
+      - razz-bank-app
+    networks:
+      - razz_bank_network
+    profiles:
+      - production
+
+# Networks
+networks:
+  razz_bank_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes
+volumes:
+  app_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  dev_data:
+    driver: local
+
+# Development override
+# Usage: docker-compose --profile development up
+# Production usage: docker-compose --profile production up
