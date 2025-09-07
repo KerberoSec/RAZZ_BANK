@@ -170,12 +170,14 @@ curl "http://localhost:5000/admin/users?admin=true"
 | POST | `/api/transfer` | Money transfer between accounts | Session/JWT |
 | POST | `/api/pay-bill` | Bill payment processing | Session/JWT |
 | POST | `/api/apply-loan` | Loan application submission | Session/JWT |
+| GET | `/api/v1.0/account` | Account details retrieval (IDOR vulnerable) | None |
 
 ### Vulnerable Endpoints (Educational)
 | Method | Endpoint | Vulnerability | Impact |
 |---|---|---|---|
 | GET | `/profile/<user_id>` | IDOR | Profile data exposure |
 | GET | `/account/<account>/transactions` | IDOR | Transaction data exposure |
+| GET | `/api/v1.0/account` | IDOR | Account data exposure with flag |
 | GET | `/admin/users?admin=true` | AuthZ Bypass | Admin data access |
 | POST | `/login` | SQL Injection | Authentication bypass |
 

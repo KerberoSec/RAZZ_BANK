@@ -129,7 +129,8 @@ Get API status and available features.
       "transfer": "/api/transfer",
       "pay_bill": "/api/pay-bill",
       "transactions": "/api/transactions",
-      "apply_loan": "/api/apply-loan"
+      "apply_loan": "/api/apply-loan",
+      "account_details": "/api/v1.0/account"
     }
   }
 }
@@ -218,6 +219,66 @@ Submit loan application. Requires authentication.
 }
 ```
 
+#### GET /api/v1.0/account
+**🚨 IDOR Vulnerability**: Get detailed account information by account number. No authorization required (intentionally vulnerable for educational purposes).
+
+**Query Parameters:**
+- `account_number` (required): The account number to retrieve
+
+**Example:**
+```bash
+curl "http://localhost:5000/api/v1.0/account?account_number=ADM001"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "account": {
+    "id": 1057,
+    "username": "admin",
+    "email": "admin@razzbank.com",
+    "full_name": "System Administrator",
+    "account_number": "ADM001",
+    "balance": 999999.99,
+    "role": "admin",
+    "created_at": "2025-01-07 10:30:00",
+    "system_message": {
+      "type": "security_alert",
+      "message": "IDOR vulnerability detected: Unauthorized admin account access",
+      "flag": "RAZZ{y0U_H@v3_f()UNd_$QL_!NJ3CT10N}",
+      "description": "Main challenge flag"
+    }
+  },
+  "recent_transactions": [
+    {
+      "date": "2025-01-07 09:15:30",
+      "description": "Bill payment to electric",
+      "amount": -150.0,
+      "from_account": "ADM001",
+      "to_account": "ELECTRIC",
+      "type": "bill_payment"
+    }
+  ],
+  "security_notice": {
+    "vulnerability": "IDOR (Insecure Direct Object Reference)",
+    "description": "This endpoint demonstrates an IDOR vulnerability where any user can access any account details without proper authorization",
+    "impact": "Unauthorized access to sensitive account information",
+    "educational_purpose": true
+  },
+  "api_version": "1.0",
+  "timestamp": "2025-01-07T10:30:15.123456"
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Account not found",
+  "account_number": "INVALID001"
+}
+```
+
 ### Vulnerable Endpoints (Educational)
 
 #### GET /profile/<user_id>
@@ -291,6 +352,21 @@ curl "http://localhost:5000/admin/users?admin=true"
   ]
 }
 ```
+
+#### GET /api/v1.0/account (IDOR)
+**🚨 IDOR Vulnerability**: Access detailed account information without authorization.
+
+**Example:**
+```bash
+curl "http://localhost:5000/api/v1.0/account?account_number=ADM001"
+```
+
+**Features:**
+- No authentication required
+- Access any account by account number
+- Returns sensitive account data and recent transactions
+- Special flag exposure for admin accounts
+- Professional API design despite intentional vulnerability
 
 ### Traditional Web Endpoints
 

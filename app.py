@@ -14,6 +14,9 @@ import redis
 from datetime import datetime, timedelta
 from functools import wraps
 
+# Service layer imports
+from services.account_service import AccountService
+
 # Database imports
 try:
     import psycopg2
@@ -798,7 +801,8 @@ def api_status():
                 'transfer': '/api/transfer',
                 'pay_bill': '/api/pay-bill',
                 'transactions': '/api/transactions',
-                'apply_loan': '/api/apply-loan'
+                'apply_loan': '/api/apply-loan',
+                'account_details': '/api/v1.0/account'
             },
             'traditional': {
                 'login': '/login',
@@ -808,6 +812,66 @@ def api_status():
             }
         }
     })
+
+@app.route('/api/v1.0/account')
+def api_account_details():
+    """
+    Get account details by account number.
+    
+    VULNERABLE: IDOR vulnerability - No authorization check for educational purposes.
+    This endpoint demonstrates how IDOR vulnerabilities can expose sensitive account data.
+    """
+    account_number = request.args.get('account_number', '').strip()
+    
+    if not account_number:
+        return jsonify({
+            'error': 'account_number parameter is required',
+            'usage': 'GET /api/v1.0/account?account_number=<account_number>'
+        }), 400
+    
+    try:
+        # Import inside function to avoid potential import issues
+        from services.account_service import AccountService
+        
+        # Initialize account service
+        account_service = AccountService()
+        
+        # Get account details (vulnerable - no authorization check)
+        account_data = account_service.get_account_by_number(account_number)
+        
+        if not account_data:
+            return jsonify({
+                'error': 'Account not found',
+                'account_number': account_number
+            }), 404
+        
+        # Get recent transactions for the account
+        transactions = account_service.get_account_transactions(account_number, limit=5)
+        
+        # Prepare response
+        response_data = {
+            'success': True,
+            'account': account_data,
+            'recent_transactions': transactions,
+            'api_version': '1.0',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Add vulnerability demonstration notice
+        response_data['security_notice'] = {
+            'vulnerability': 'IDOR (Insecure Direct Object Reference)',
+            'description': 'This endpoint demonstrates an IDOR vulnerability where any user can access any account details without proper authorization',
+            'impact': 'Unauthorized access to sensitive account information',
+            'educational_purpose': True
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({
+            'error': 'Internal server error occurred while retrieving account details',
+            'account_number': account_number
+        }), 500
 
 @app.route('/api/transfer', methods=['POST'])
 def api_transfer():
