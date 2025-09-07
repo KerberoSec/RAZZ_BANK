@@ -14,6 +14,18 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+# Add custom Jinja2 filters
+@app.template_filter('format_transaction_type')
+def format_transaction_type(txn_type):
+    type_map = {
+        'transfer': 'Transfer',
+        'bill_payment': 'Bill Payment',
+        'deposit': 'Deposit',
+        'withdrawal': 'Withdrawal',
+        'other': 'Other'
+    }
+    return type_map.get(txn_type, txn_type.replace('_', ' ').title())
+
 # Database initialization
 def init_db():
     conn = sqlite3.connect('razz_bank.db')
@@ -206,6 +218,126 @@ def dashboard():
     conn.close()
     
     return render_template('dashboard.html', user=user)
+
+@app.route('/account-settings', methods=['GET', 'POST'])
+def account_settings():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('razz_bank.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'update_profile':
+            full_name = request.form.get('full_name', '').strip()
+            email = request.form.get('email', '').strip()
+            
+            if full_name and email:
+                cursor.execute('''
+                    UPDATE users SET full_name = ?, email = ? WHERE id = ?
+                ''', (full_name, email, session['user_id']))
+                conn.commit()
+                conn.close()
+                return render_template('account_settings.html', success='Profile updated successfully')
+            else:
+                conn.close()
+                return render_template('account_settings.html', error='All fields are required')
+        
+        elif action == 'change_password':
+            current_password = request.form.get('current_password', '')
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            if not all([current_password, new_password, confirm_password]):
+                conn.close()
+                return render_template('account_settings.html', error='All password fields are required')
+            
+            if new_password != confirm_password:
+                conn.close()
+                return render_template('account_settings.html', error='New passwords do not match')
+            
+            # Verify current password
+            current_hash = hashlib.sha256(current_password.encode()).hexdigest()
+            cursor.execute('SELECT password FROM users WHERE id = ?', (session['user_id'],))
+            stored_password = cursor.fetchone()
+            
+            if stored_password and stored_password[0] == current_hash:
+                new_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                cursor.execute('UPDATE users SET password = ? WHERE id = ?', (new_hash, session['user_id']))
+                conn.commit()
+                conn.close()
+                return render_template('account_settings.html', success='Password changed successfully')
+            else:
+                conn.close()
+                return render_template('account_settings.html', error='Current password is incorrect')
+    
+    # GET request - show user info
+    cursor.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],))
+    user = cursor.fetchone()
+    conn.close()
+    
+    return render_template('account_settings.html', user=user)
+
+@app.route('/statements')
+def statements():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('razz_bank.db')
+    cursor = conn.cursor()
+    
+    # Get user info
+    cursor.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        return redirect(url_for('login'))
+    
+    # Get all transactions for this account
+    account_number = user[5]
+    cursor.execute('''
+        SELECT transaction_date, description, amount, from_account, to_account
+        FROM transactions 
+        WHERE from_account = ? OR to_account = ?
+        ORDER BY transaction_date DESC 
+        LIMIT 50
+    ''', (account_number, account_number))
+    
+    transactions = cursor.fetchall()
+    conn.close()
+    
+    # Format transactions for display
+    formatted_transactions = []
+    for txn in transactions:
+        is_credit = txn[4] == account_number and txn[3] != account_number
+        amount = txn[2] if is_credit else -txn[2]
+        
+        # Determine transaction type based on description
+        description = txn[1].lower()
+        if 'bill payment' in description:
+            txn_type = 'bill_payment'
+        elif 'transfer' in description:
+            txn_type = 'transfer'
+        elif 'deposit' in description or 'salary' in description:
+            txn_type = 'deposit'
+        elif 'withdrawal' in description or 'atm' in description:
+            txn_type = 'withdrawal'
+        else:
+            txn_type = 'other'
+        
+        formatted_transactions.append({
+            'date': txn[0],
+            'description': txn[1],
+            'amount': amount,
+            'type': txn_type,
+            'from_account': txn[3],
+            'to_account': txn[4]
+        })
+    
+    return render_template('statements.html', user=user, transactions=formatted_transactions)
 
 @app.route('/logout')
 def logout():
