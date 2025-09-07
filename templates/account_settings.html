@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Razz Bank{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 style="color: #333; margin: 0;">Account Settings</h2>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <!-- Profile Information -->
+            <div class="settings-section">
+                <h3 style="color: #333; margin-bottom: 1rem;">Profile Information</h3>
+                <form method="POST" action="{{ url_for('account_settings') }}">
+                    <input type="hidden" name="action" value="update_profile">
+                    <div class="form-group">
+                        <label for="full_name">Full Name:</label>
+                        <input type="text" id="full_name" name="full_name" class="form-control" 
+                               value="{{ user[3] if user else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address:</label>
+                        <input type="email" id="email" name="email" class="form-control" 
+                               value="{{ user[2] if user else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Account Number:</label>
+                        <input type="text" class="form-control" value="{{ user[5] if user else '' }}" readonly style="background-color: #f8f9fa;">
+                        <small style="color: #666;">Account number cannot be changed</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                </form>
+            </div>
+
+            <!-- Change Password -->
+            <div class="settings-section">
+                <h3 style="color: #333; margin-bottom: 1rem;">Change Password</h3>
+                <form method="POST" action="{{ url_for('account_settings') }}">
+                    <input type="hidden" name="action" value="change_password">
+                    <div class="form-group">
+                        <label for="current_password">Current Password:</label>
+                        <input type="password" id="current_password" name="current_password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">New Password:</label>
+                        <input type="password" id="new_password" name="new_password" class="form-control" required>
+                        <div id="passwordStrength" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm New Password:</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="card" style="background-color: #f8f9fa; border: 1px solid #dee2e6;">
+            <h3 style="color: #333; margin-bottom: 1rem;">Account Information</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div>
+                    <strong>Username:</strong> {{ user[1] if user else '' }}
+                </div>
+                <div>
+                    <strong>Account Type:</strong> {{ user[7].title() if user and user[7] else 'Standard' }}
+                </div>
+                <div>
+                    <strong>Current Balance:</strong> ${{ "%.2f"|format(user[6]) if user else '0.00' }}
+                </div>
+                <div>
+                    <strong>Account Created:</strong> {{ user[8].split(' ')[0] if user and user[8] else 'N/A' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="card" style="margin-top: 2rem;">
+            <h3 style="color: #333; margin-bottom: 1rem;">Security Settings</h3>
+            <div class="security-options">
+                <div class="security-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8f9fa; margin-bottom: 1rem; border-radius: 8px;">
+                    <div>
+                        <strong>Two-Factor Authentication</strong>
+                        <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">Add an extra layer of security to your account</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="showComingSoon()">Enable</button>
+                </div>
+                <div class="security-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8f9fa; margin-bottom: 1rem; border-radius: 8px;">
+                    <div>
+                        <strong>Login Notifications</strong>
+                        <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">Get notified when someone logs into your account</p>
+                    </div>
+                    <button class="btn btn-success">Enabled</button>
+                </div>
+                <div class="security-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8f9fa; margin-bottom: 1rem; border-radius: 8px;">
+                    <div>
+                        <strong>Session Timeout</strong>
+                        <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">Automatic logout after 30 minutes of inactivity</p>
+                    </div>
+                    <button class="btn btn-success">Enabled</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card" style="margin-top: 2rem; border-color: #dc3545;">
+            <h3 style="color: #dc3545; margin-bottom: 1rem;">Danger Zone</h3>
+            <div style="padding: 1rem; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb;">
+                <strong style="color: #721c24;">Close Account</strong>
+                <p style="margin: 0.5rem 0; color: #721c24;">Once you close your account, there is no going back. Please be certain.</p>
+                <button class="btn" style="background-color: #dc3545; color: white;" onclick="showCloseAccountWarning()">Close Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showComingSoon() {
+    if (window.razzBank) {
+        window.razzBank.showAlert('This feature is coming soon!', 'info');
+    } else {
+        alert('This feature is coming soon!');
+    }
+}
+
+function showCloseAccountWarning() {
+    const confirmed = confirm('Are you absolutely sure you want to close your account? This action cannot be undone and you will lose access to all your data.');
+    if (confirmed) {
+        const doubleConfirm = confirm('This is your final warning. Type "DELETE" and click OK to proceed with account closure.');
+        if (doubleConfirm) {
+            if (window.razzBank) {
+                window.razzBank.showAlert('Account closure feature is disabled in this demo environment.', 'warning');
+            } else {
+                alert('Account closure feature is disabled in this demo environment.');
+            }
+        }
+    }
+}
+
+// Password strength validation
+document.addEventListener('DOMContentLoaded', function() {
+    const newPasswordField = document.getElementById('new_password');
+    if (newPasswordField && window.razzBank) {
+        newPasswordField.addEventListener('input', function() {
+            window.razzBank.validatePassword(this.value);
+        });
+    }
+});
+</script>
+
+<style>
+@media (max-width: 768px) {
+    .container > .card > div:first-child {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+{% endblock %}

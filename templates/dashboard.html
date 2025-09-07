@@ -16,7 +16,7 @@
             
             <div class="action-buttons">
                 <button class="btn btn-primary transfer-btn" style="padding: 1rem;">Transfer Money</button>
-                <button class="btn btn-secondary" style="padding: 1rem;">View Statements</button>
+                <a href="{{ url_for('statements') }}" class="btn btn-secondary" style="padding: 1rem; text-decoration: none; display: inline-block; text-align: center;">View Statements</a>
             </div>
         </div>
         
@@ -26,7 +26,7 @@
                 <button class="btn btn-primary bill-pay-btn" style="text-align: center;">Pay Bills</button>
                 <button class="btn btn-primary loan-apply-btn" style="text-align: center;">Apply for Loan</button>
                 <a href="#" class="btn btn-secondary" style="text-align: center;">Deposit Check</a>
-                <a href="#" class="btn btn-secondary" style="text-align: center;">Account Settings</a>
+                <a href="{{ url_for('account_settings') }}" class="btn btn-secondary" style="text-align: center; text-decoration: none;">Account Settings</a>
                 <a href="#" class="btn btn-secondary" style="text-align: center;">Help & Support</a>
             </div>
         </div>

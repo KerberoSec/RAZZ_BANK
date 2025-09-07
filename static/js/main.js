@@ -717,13 +717,68 @@ class RazzBank {
 }
 
 // Initialize the RazzBank application when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     window.razzBank = new RazzBank();
-    
-    // Add some additional UI enhancements
     addUIEnhancements();
 });
 
+// Add CSS classes for alerts if they don't exist
+if (!document.querySelector('style[data-razzbank-alerts]')) {
+    const alertStyles = document.createElement('style');
+    alertStyles.setAttribute('data-razzbank-alerts', 'true');
+    alertStyles.textContent = `
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .alert-warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        .alert-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .transaction-table th,
+        .transaction-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .transaction-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .transaction-amount.positive {
+            color: #28a745;
+        }
+        .transaction-amount.negative {
+            color: #dc3545;
+        }
+    `;
+    document.head.appendChild(alertStyles);
+}
+
+// Add UI enhancements
 function addUIEnhancements() {
     // Add hover effects to cards
     document.querySelectorAll('.card').forEach(card => {
@@ -783,8 +838,8 @@ function addUIEnhancements() {
 }
 
 // Add CSS for ripple animation
-const style = document.createElement('style');
-style.textContent = `
+const rippleStyle = document.createElement('style');
+rippleStyle.textContent = `
     @keyframes ripple {
         to {
             transform: scale(4);
@@ -792,4 +847,4 @@ style.textContent = `
         }
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(rippleStyle);
