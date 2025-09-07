@@ -1015,10 +1015,6 @@ def api_apply_loan():
     except Exception as e:
         return jsonify({'error': 'Loan application failed'}), 500
 
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=False, host='0.0.0.0', port=5000)
-
 # PWA Support Routes
 @app.route('/sw.js')
 def service_worker():
@@ -1027,3 +1023,7 @@ def service_worker():
 @app.route('/manifest.json')
 def manifest():
     return app.send_static_file('manifest.json')
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=False, host='0.0.0.0', port=5000)
