@@ -1,11 +1,24 @@
-// Razz Bank - Main JavaScript Functions
+// Razz Bank - Enhanced Main JavaScript Functions
 
-class RazzBank {
+class RazzBankAdvanced {
     constructor() {
+        this.jwtToken = localStorage.getItem('razz_bank_jwt');
+        this.theme = localStorage.getItem('theme') || 'light';
+        this.apiEndpoints = {
+            login: '/api/auth/login',
+            verify: '/api/auth/verify',
+            status: '/api/status',
+            transfer: '/api/transfer',
+            transactions: '/api/transactions',
+            profile: '/profile',
+            adminUsers: '/admin/users'
+        };
         this.init();
     }
 
     init() {
+        // Initialize theme
+        this.initTheme();
         // Initialize event listeners
         this.bindEvents();
         // Initialize security features
@@ -14,9 +27,424 @@ class RazzBank {
         this.initFormValidation();
         // Initialize dashboard features
         this.initDashboard();
+        // Initialize JWT authentication
+        this.initJWTAuth();
+        // Initialize API features
+        this.initAPIFeatures();
+        // Initialize modern UI enhancements
+        this.initModernUI();
+    }
+
+    // Theme Management
+    initTheme() {
+        document.documentElement.setAttribute('data-theme', this.theme);
+        const themeToggle = document.querySelector('.theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => this.toggleTheme());
+        }
+    }
+
+    toggleTheme() {
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', this.theme);
+        localStorage.setItem('theme', this.theme);
+        
+        // Update theme toggle text
+        const themeToggle = document.querySelector('.theme-toggle');
+        if (themeToggle) {
+            themeToggle.textContent = this.theme === 'light' ? '🌙' : '☀️';
+        }
+    }
+
+    // JWT Authentication
+    initJWTAuth() {
+        // Add JWT checkbox to login form
+        const loginForm = document.querySelector('#loginForm');
+        if (loginForm && !document.querySelector('#useJWT')) {
+            const jwtOption = document.createElement('div');
+            jwtOption.className = 'form-group';
+            jwtOption.innerHTML = `
+                <label>
+                    <input type="checkbox" id="useJWT" name="use_jwt"> 
+                    Use JWT Authentication
+                </label>
+            `;
+            loginForm.insertBefore(jwtOption, loginForm.querySelector('button'));
+        }
+
+        // Verify existing JWT token
+        if (this.jwtToken) {
+            this.verifyToken();
+        }
+    }
+
+    async loginWithJWT(username, password) {
+        try {
+            const response = await fetch(this.apiEndpoints.login, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            
+            if (data.success && data.token) {
+                this.jwtToken = data.token;
+                localStorage.setItem('razz_bank_jwt', this.jwtToken);
+                this.showAlert('JWT Login successful!', 'success');
+                
+                // Redirect to dashboard
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1000);
+                
+                return true;
+            } else {
+                this.showAlert(data.error || 'Login failed', 'danger');
+                return false;
+            }
+        } catch (error) {
+            this.showAlert('Network error during JWT login', 'danger');
+            return false;
+        }
+    }
+
+    async verifyToken() {
+        if (!this.jwtToken) return false;
+
+        try {
+            const response = await fetch(this.apiEndpoints.verify, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token: this.jwtToken })
+            });
+
+            const data = await response.json();
+            
+            if (!data.valid) {
+                localStorage.removeItem('razz_bank_jwt');
+                this.jwtToken = null;
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Token verification failed:', error);
+            return false;
+        }
+    }
+
+    // API Request Helper with JWT
+    async apiRequest(endpoint, options = {}) {
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        };
+
+        if (this.jwtToken) {
+            defaultOptions.headers['Authorization'] = `Bearer ${this.jwtToken}`;
+        }
+
+        const finalOptions = {
+            ...defaultOptions,
+            ...options,
+            headers: {
+                ...defaultOptions.headers,
+                ...options.headers
+            }
+        };
+
+        try {
+            const response = await fetch(endpoint, finalOptions);
+            const data = await response.json();
+            
+            if (response.status === 401) {
+                // Token expired or invalid
+                localStorage.removeItem('razz_bank_jwt');
+                this.jwtToken = null;
+                this.showAlert('Session expired. Please login again.', 'warning');
+            }
+            
+            return { response, data };
+        } catch (error) {
+            console.error('API request failed:', error);
+            throw error;
+        }
+    }
+
+    // IDOR Vulnerability Demonstration
+    async demonstrateIDOR() {
+        const userIdInput = prompt('Enter user ID to view profile (IDOR vulnerability):');
+        if (!userIdInput) return;
+
+        try {
+            const response = await fetch(`/profile/${userIdInput}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showAlert(`IDOR Success! Viewing user: ${data.full_name} (ID: ${data.id})`, 'warning');
+                console.log('IDOR Data:', data);
+                
+                // Show in modal
+                this.showIDORModal(data);
+            } else {
+                this.showAlert(data.error || 'User not found', 'danger');
+            }
+        } catch (error) {
+            this.showAlert('IDOR demonstration failed', 'danger');
+        }
+    }
+
+    showIDORModal(userData) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>🚨 IDOR Vulnerability Exploited</h3>
+                <div class="warning">
+                    <strong>Security Warning:</strong> This demonstrates an IDOR vulnerability where you can access any user's data without proper authorization.
+                </div>
+                <div class="user-data">
+                    <h4>Exposed User Data:</h4>
+                    <p><strong>ID:</strong> ${userData.id}</p>
+                    <p><strong>Username:</strong> ${userData.username}</p>
+                    <p><strong>Email:</strong> ${userData.email}</p>
+                    <p><strong>Full Name:</strong> ${userData.full_name}</p>
+                    <p><strong>Account Number:</strong> ${userData.account_number}</p>
+                    <p><strong>Balance:</strong> $${userData.balance}</p>
+                    <p><strong>Role:</strong> ${userData.role}</p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        modal.querySelector('.close').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+    }
+
+    // Admin Bypass Demonstration
+    async demonstrateAdminBypass() {
+        try {
+            const response = await fetch('/admin/users?admin=true');
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showAlert(`Admin Bypass Success! Retrieved ${data.users.length} user records`, 'warning');
+                console.log('Admin Bypass Data:', data);
+                
+                // Show in modal
+                this.showAdminBypassModal(data.users);
+            } else {
+                this.showAlert(data.error || 'Admin bypass failed', 'danger');
+            }
+        } catch (error) {
+            this.showAlert('Admin bypass demonstration failed', 'danger');
+        }
+    }
+
+    showAdminBypassModal(users) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 800px;">
+                <span class="close">&times;</span>
+                <h3>🚨 Admin Authorization Bypass</h3>
+                <div class="warning">
+                    <strong>Security Warning:</strong> This demonstrates an authorization bypass where admin access is granted through URL parameters.
+                </div>
+                <div class="admin-data">
+                    <h4>Exposed Admin Data (${users.length} users):</h4>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Balance</th>
+                                    <th>Role</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${users.slice(0, 20).map(user => `
+                                    <tr>
+                                        <td>${user.id}</td>
+                                        <td>${user.username}</td>
+                                        <td>${user.email}</td>
+                                        <td>$${user.balance}</td>
+                                        <td>${user.role}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${users.length > 20 ? `<p><em>... and ${users.length - 20} more users</em></p>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        modal.querySelector('.close').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+    }
+
+    // Modern UI Enhancements
+    initModernUI() {
+        // Add loading states to buttons
+        this.enhanceButtons();
+        
+        // Add animation to cards
+        this.animateCards();
+        
+        // Add notification system
+        this.initNotifications();
+        
+        // Add progressive web app features
+        this.initPWA();
+    }
+
+    enhanceButtons() {
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // Add ripple effect
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${x}px;
+                    top: ${y}px;
+                    background: rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    transform: scale(0);
+                    animation: ripple 0.6s linear;
+                    pointer-events: none;
+                `;
+                
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+                
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+    }
+
+    animateCards() {
+        // Intersection Observer for card animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            observer.observe(card);
+        });
+    }
+
+    initNotifications() {
+        // Create notification container
+        if (!document.querySelector('.notification-container')) {
+            const container = document.createElement('div');
+            container.className = 'notification-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            `;
+            document.body.appendChild(container);
+        }
+    }
+
+    showNotification(message, type = 'info', duration = 5000) {
+        const container = document.querySelector('.notification-container');
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.style.cssText = `
+            background: var(--card-bg);
+            border-left: 4px solid var(--${type === 'success' ? 'success' : type === 'danger' ? 'danger' : type === 'warning' ? 'warning' : 'info'}-color);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 300px;
+        `;
+        notification.textContent = message;
+        
+        container.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Auto remove
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 300);
+        }, duration);
+    }
+
+    initPWA() {
+        // Check if service worker is supported
+        if ('serviceWorker' in navigator) {
+            // Register service worker for offline functionality
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => {
+                    console.log('Service Worker registered');
+                })
+                .catch(() => {
+                    console.log('Service Worker registration failed');
+                });
+        }
     }
 
     bindEvents() {
+        // Enhanced form handling with JWT support
+        const loginForm = document.querySelector('#loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                const useJWT = document.querySelector('#useJWT')?.checked;
+                if (useJWT) {
+                    e.preventDefault();
+                    const username = loginForm.querySelector('input[name="username"]').value;
+                    const password = loginForm.querySelector('input[name="password"]').value;
+                    await this.loginWithJWT(username, password);
+                }
+            });
+        }
+
         // Handle transfer modal
         const transferBtn = document.querySelector('.transfer-btn');
         if (transferBtn) {
@@ -35,19 +463,235 @@ class RazzBank {
             loanApplyBtn.addEventListener('click', () => this.showLoanApplicationModal());
         }
 
-        // Handle modal close buttons
-        document.querySelectorAll('.close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', (e) => this.closeModal(e));
-        });
+        // IDOR Demonstration buttons
+        const idorBtn = document.querySelector('.idor-demo-btn');
+        if (idorBtn) {
+            idorBtn.addEventListener('click', () => this.demonstrateIDOR());
+        }
 
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
+        // Admin bypass demonstration
+        const adminBypassBtn = document.querySelector('.admin-bypass-btn');
+        if (adminBypassBtn) {
+            adminBypassBtn.addEventListener('click', () => this.demonstrateAdminBypass());
+        }
+
+        // Handle modal close buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('close')) {
+                this.closeModal(e);
+            }
             if (e.target.classList.contains('modal')) {
                 this.closeModal(e);
             }
         });
 
-        // Handle form submissions - use event delegation since forms are created dynamically
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeAllModals();
+            }
+        });
+    }
+
+    initAPIFeatures() {
+        // Add vulnerability demonstration panel
+        this.createVulnerabilityPanel();
+        
+        // Add API testing interface
+        this.createAPITestInterface();
+    }
+
+    createVulnerabilityPanel() {
+        const dashboard = document.querySelector('.dashboard-grid');
+        if (!dashboard || document.querySelector('.vulnerability-panel')) return;
+
+        const panel = document.createElement('div');
+        panel.className = 'card vulnerability-panel glass-card';
+        panel.innerHTML = `
+            <h3>🔓 Vulnerability Demonstrations</h3>
+            <p class="warning">Educational demonstrations of common web vulnerabilities</p>
+            <div class="vulnerability-buttons">
+                <button class="btn btn-danger btn-outline idor-demo-btn">
+                    <span>🎯</span> Test IDOR Vulnerability
+                </button>
+                <button class="btn btn-warning btn-outline admin-bypass-btn">
+                    <span>🔑</span> Admin Authorization Bypass
+                </button>
+                <button class="btn btn-info btn-outline sql-demo-btn">
+                    <span>💉</span> SQL Injection (Login)
+                </button>
+                <button class="btn btn-secondary btn-outline jwt-demo-btn">
+                    <span>🔐</span> JWT Token Analysis
+                </button>
+            </div>
+            <div class="vulnerability-info">
+                <small>
+                    <strong>Note:</strong> These vulnerabilities are intentionally implemented for educational purposes.
+                    Never deploy this application in production environments.
+                </small>
+            </div>
+        `;
+
+        dashboard.appendChild(panel);
+
+        // Bind new events
+        panel.querySelector('.idor-demo-btn').addEventListener('click', () => this.demonstrateIDOR());
+        panel.querySelector('.admin-bypass-btn').addEventListener('click', () => this.demonstrateAdminBypass());
+        panel.querySelector('.sql-demo-btn').addEventListener('click', () => this.demonstrateSQL());
+        panel.querySelector('.jwt-demo-btn').addEventListener('click', () => this.demonstrateJWT());
+    }
+
+    demonstrateSQL() {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>💉 SQL Injection Demonstration</h3>
+                <div class="warning">
+                    <strong>Vulnerability:</strong> The login form is vulnerable to SQL injection attacks.
+                </div>
+                <div class="sql-demo">
+                    <h4>Try these payloads in the login form:</h4>
+                    <div class="code-block">
+                        <h5>Authentication Bypass:</h5>
+                        <code>Username: admin' OR '1'='1' --</code><br>
+                        <code>Password: anything</code>
+                    </div>
+                    <div class="code-block">
+                        <h5>Data Extraction:</h5>
+                        <code>Username: admin' UNION SELECT 1,2,3,flag_value,5,6,7,8 FROM system_flags--</code><br>
+                        <code>Password: anything</code>
+                    </div>
+                    <p><strong>Flag Location:</strong> system_flags table contains the real flag</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    demonstrateJWT() {
+        if (!this.jwtToken) {
+            this.showAlert('No JWT token available. Login with JWT option first.', 'warning');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>🔐 JWT Token Analysis</h3>
+                <div class="warning">
+                    <strong>Security Issue:</strong> JWT tokens are using a weak secret key.
+                </div>
+                <div class="jwt-demo">
+                    <h4>Current JWT Token:</h4>
+                    <div class="code-block">
+                        <code style="word-break: break-all;">${this.jwtToken}</code>
+                    </div>
+                    <h4>Decoded Payload:</h4>
+                    <div class="code-block">
+                        <pre>${JSON.stringify(this.decodeJWT(this.jwtToken), null, 2)}</pre>
+                    </div>
+                    <h4>Vulnerability Details:</h4>
+                    <ul>
+                        <li>Weak secret key: "weak_secret_key_2024"</li>
+                        <li>No proper key rotation</li>
+                        <li>Stored in localStorage (XSS vulnerability)</li>
+                        <li>No additional security claims</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    decodeJWT(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return { error: 'Invalid token' };
+        }
+    }
+
+    createAPITestInterface() {
+        const container = document.querySelector('.container');
+        if (!container || document.querySelector('.api-test-interface')) return;
+
+        const apiInterface = document.createElement('div');
+        apiInterface.className = 'card api-test-interface gradient-border';
+        apiInterface.innerHTML = `
+            <h3>🔧 API Testing Interface</h3>
+            <div class="api-form">
+                <div class="form-group">
+                    <label for="apiEndpoint">Endpoint:</label>
+                    <select id="apiEndpoint" class="form-control">
+                        <option value="/api/status">GET /api/status</option>
+                        <option value="/api/transactions">GET /api/transactions</option>
+                        <option value="/profile/1">GET /profile/1 (IDOR)</option>
+                        <option value="/admin/users?admin=true">GET /admin/users?admin=true</option>
+                        <option value="/account/RB000001/transactions">GET /account/RB000001/transactions</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useJWTHeader"> Use JWT Authorization Header
+                    </label>
+                </div>
+                <button class="btn btn-primary" id="testAPIBtn">Test API Endpoint</button>
+                <div id="apiResponse" class="api-response" style="display: none;">
+                    <h4>Response:</h4>
+                    <pre></pre>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(apiInterface);
+
+        // Bind API test functionality
+        document.getElementById('testAPIBtn').addEventListener('click', () => this.testAPIEndpoint());
+    }
+
+    async testAPIEndpoint() {
+        const endpoint = document.getElementById('apiEndpoint').value;
+        const useJWT = document.getElementById('useJWTHeader').checked;
+        const responseDiv = document.getElementById('apiResponse');
+        const responsePre = responseDiv.querySelector('pre');
+
+        try {
+            const options = {
+                method: 'GET',
+                headers: {}
+            };
+
+            if (useJWT && this.jwtToken) {
+                options.headers['Authorization'] = `Bearer ${this.jwtToken}`;
+            }
+
+            const response = await fetch(endpoint, options);
+            const data = await response.json();
+
+            responsePre.textContent = JSON.stringify({
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers),
+                body: data
+            }, null, 2);
+
+            responseDiv.style.display = 'block';
+        } catch (error) {
+            responsePre.textContent = `Error: ${error.message}`;
+            responseDiv.style.display = 'block';
+        }
+    }
         document.addEventListener('submit', (e) => {
             if (e.target.id === 'transferForm') {
                 this.handleTransfer(e);
@@ -837,14 +1481,373 @@ function addUIEnhancements() {
     });
 }
 
-// Add CSS for ripple animation
-const rippleStyle = document.createElement('style');
-rippleStyle.textContent = `
+    // Remaining methods from original class
+    initSecurity() {
+        // Session timeout monitoring
+        this.startSessionTimer();
+        
+        // Auto-logout on inactivity
+        this.initAutoLogout();
+        
+        // Clear sensitive data on page unload
+        window.addEventListener('beforeunload', () => this.clearSensitiveData());
+        
+        // Detect potential SQL injection in forms
+        document.addEventListener('input', (e) => {
+            if (e.target.type === 'text' || e.target.type === 'email') {
+                if (this.detectSQLInjection(e.target.value)) {
+                    e.target.style.borderColor = '#dc3545';
+                    this.showAlert('Potential SQL injection detected!', 'warning');
+                } else {
+                    e.target.style.borderColor = '';
+                }
+            }
+        });
+    }
+
+    initFormValidation() {
+        // Real-time password strength validation
+        const passwordField = document.getElementById('password');
+        if (passwordField) {
+            passwordField.addEventListener('input', (e) => this.validatePassword(e.target.value));
+        }
+
+        // Account number formatting
+        const accountFields = document.querySelectorAll('.account-number-input');
+        accountFields.forEach(field => {
+            field.addEventListener('input', (e) => this.formatAccountNumber(e.target));
+        });
+
+        // Amount input validation
+        const amountFields = document.querySelectorAll('.amount-input');
+        amountFields.forEach(field => {
+            field.addEventListener('input', (e) => this.validateAmount(e.target));
+        });
+    }
+
+    initDashboard() {
+        if (this.isLoggedIn()) {
+            this.updateLastActivity();
+            this.loadRecentTransactions();
+            this.updateAccountInfo();
+        }
+    }
+
+    // Helper methods
+    showAlert(message, type = 'info') {
+        // Remove existing alerts
+        const existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        
+        const container = document.querySelector('.container') || document.body;
+        container.insertBefore(alert, container.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alert && alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+        
+        // Also show as notification
+        this.showNotification(message, type);
+    }
+
+    closeAllModals() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+
+    closeModal(e) {
+        const modal = e ? e.target.closest('.modal') : document.querySelector('.modal[style*="block"]');
+        if (modal) {
+            modal.style.display = 'none';
+            
+            // Clear form data for security
+            const forms = modal.querySelectorAll('form');
+            forms.forEach(form => form.reset());
+        }
+    }
+
+    showLoading(message = 'Loading...') {
+        const loading = document.createElement('div');
+        loading.className = 'loading-overlay';
+        loading.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p>${message}</p>
+        `;
+        loading.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+        `;
+        document.body.appendChild(loading);
+    }
+
+    hideLoading() {
+        const loading = document.querySelector('.loading-overlay');
+        if (loading) {
+            loading.remove();
+        }
+    }
+
+    isLoggedIn() {
+        return sessionStorage.getItem('user_id') || this.jwtToken;
+    }
+
+    startSessionTimer() {
+        // Implementation for session monitoring
+    }
+
+    initAutoLogout() {
+        // Implementation for auto-logout
+    }
+
+    clearSensitiveData() {
+        // Clear any sensitive data from memory
+        this.jwtToken = null;
+    }
+
+    updateLastActivity() {
+        localStorage.setItem('lastActivity', Date.now().toString());
+    }
+
+    loadRecentTransactions() {
+        // Load and display recent transactions
+    }
+
+    updateAccountInfo() {
+        // Update account information display
+    }
+
+    validatePassword(password) {
+        // Password strength validation
+        const strength = this.calculatePasswordStrength(password);
+        // Update UI with strength indicator
+    }
+
+    calculatePasswordStrength(password) {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/\d/.test(password)) score++;
+        if (/[^a-zA-Z0-9]/.test(password)) score++;
+        return score;
+    }
+
+    formatAccountNumber(input) {
+        // Format account number input
+        let value = input.value.replace(/\D/g, '');
+        if (value.length > 0) {
+            value = 'RB' + value.substring(0, 6);
+        }
+        input.value = value;
+    }
+
+    validateAmount(input) {
+        // Validate monetary amounts
+        const value = parseFloat(input.value);
+        if (isNaN(value) || value <= 0) {
+            input.setCustomValidity('Please enter a valid amount');
+        } else {
+            input.setCustomValidity('');
+        }
+    }
+
+    detectSQLInjection(input) {
+        const sqlPatterns = [
+            /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
+            /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
+            /((\%27)|(\'))union/i,
+            /exec(\s|\+)+(s|x)p\w+/i,
+            /union[^a-z]*select/i,
+            /insert[^a-z]*into/i,
+            /delete[^a-z]*from/i,
+            /update[^a-z]*set/i,
+            /drop[^a-z]*(table|database)/i
+        ];
+        
+        return sqlPatterns.some(pattern => pattern.test(input));
+    }
+
+    // Modal creation methods (simplified versions)
+    showTransferModal() {
+        this.createModal('transfer', 'Transfer Money', `
+            <form id="transferForm">
+                <div class="form-group">
+                    <label for="toAccount">To Account:</label>
+                    <input type="text" id="toAccount" name="toAccount" class="form-control account-number-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount:</label>
+                    <input type="number" id="amount" name="amount" class="form-control amount-input" step="0.01" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <input type="text" id="description" name="description" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Transfer</button>
+            </form>
+        `);
+    }
+
+    showBillPayModal() {
+        this.createModal('billPay', 'Pay Bill', `
+            <form id="billPayForm">
+                <div class="form-group">
+                    <label for="payee">Payee:</label>
+                    <input type="text" id="payee" name="payee" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="billAmount">Amount:</label>
+                    <input type="number" id="billAmount" name="amount" class="form-control amount-input" step="0.01" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Pay Bill</button>
+            </form>
+        `);
+    }
+
+    showLoanApplicationModal() {
+        this.createModal('loanApplication', 'Apply for Loan', `
+            <form id="loanApplicationForm">
+                <div class="form-group">
+                    <label for="loanAmount">Loan Amount:</label>
+                    <input type="number" id="loanAmount" name="loanAmount" class="form-control" step="1000" min="1000" required>
+                </div>
+                <div class="form-group">
+                    <label for="loanPurpose">Purpose:</label>
+                    <select id="loanPurpose" name="loanPurpose" class="form-control" required>
+                        <option value="">Select purpose</option>
+                        <option value="home">Home Purchase</option>
+                        <option value="car">Car Purchase</option>
+                        <option value="education">Education</option>
+                        <option value="business">Business</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+        `);
+    }
+
+    createModal(id, title, content) {
+        // Remove existing modal
+        const existing = document.getElementById(`${id}Modal`);
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = `${id}Modal`;
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>${title}</h3>
+                ${content}
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        return modal;
+    }
+}
+
+// Add CSS for new components
+const enhancedStyles = document.createElement('style');
+enhancedStyles.textContent = `
     @keyframes ripple {
         to {
             transform: scale(4);
             opacity: 0;
         }
     }
+    
+    .vulnerability-panel {
+        margin-top: 2rem;
+    }
+    
+    .vulnerability-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .vulnerability-info {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(255, 193, 7, 0.1);
+        border-radius: 8px;
+        border-left: 4px solid var(--warning-color);
+    }
+    
+    .code-block {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+        border-left: 4px solid #007bff;
+    }
+    
+    .code-block code {
+        background: none;
+        padding: 0;
+        color: #d63384;
+        font-weight: bold;
+    }
+    
+    .api-response {
+        margin-top: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .api-response pre {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .notification-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
 `;
-document.head.appendChild(rippleStyle);
+document.head.appendChild(enhancedStyles);
+
+// Initialize the enhanced Razz Bank application
+document.addEventListener('DOMContentLoaded', () => {
+    window.razzBank = new RazzBankAdvanced();
+    
+    // Add theme toggle to navigation if it doesn't exist
+    const nav = document.querySelector('.nav-links');
+    if (nav && !document.querySelector('.theme-toggle')) {
+        const themeToggle = document.createElement('button');
+        themeToggle.className = 'theme-toggle';
+        themeToggle.textContent = '🌙';
+        themeToggle.title = 'Toggle theme';
+        nav.appendChild(themeToggle);
+    }
+});

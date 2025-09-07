@@ -1,0 +1,22 @@
+{
+    "name": "Razz Bank Training Platform",
+    "short_name": "RazzBank",
+    "description": "Advanced multi-vulnerability web banking application for cybersecurity training",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#667eea",
+    "theme_color": "#667eea",
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'><rect width='192' height='192' fill='%23667eea'/><text x='96' y='120' font-size='96' text-anchor='middle' fill='white'>🏦</text></svg>",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><rect width='512' height='512' fill='%23667eea'/><text x='256' y='320' font-size='256' text-anchor='middle' fill='white'>🏦</text></svg>",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ],
+    "categories": ["education", "security", "training"]
+}

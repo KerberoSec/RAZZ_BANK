@@ -1,43 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Razz Bank - Secure Banking{% endblock %}</title>
+    <title>{% block title %}Razz Bank - Advanced Security Training Platform{% endblock %}</title>
+    <meta name="description" content="Advanced multi-vulnerability web banking application for cybersecurity training">
+    <meta name="keywords" content="cybersecurity, penetration testing, SQL injection, IDOR, JWT, vulnerability testing">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🏦</text></svg>">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Progressive Web App -->
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Security Headers (for educational demonstration) -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
     <!-- RAZZ{y0U_H@v3^f(){UNd}/F@K3~FL4G} -->
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar">
+<body data-page="{{ request.endpoint }}">
+    <!-- Accessibility skip link -->
+    <a href="#main-content" class="sr-only">Skip to main content</a>
+    
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
         <div class="nav-container">
-            <a href="{{ url_for('index') }}" class="logo">🏦 Razz Bank</a>
+            <a href="{{ url_for('index') }}" class="logo" aria-label="Razz Bank Home">Razz Bank</a>
             <div class="nav-links">
                 {% if session.user_id %}
-                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                    <a href="{{ url_for('logout') }}">Logout</a>
+                    <a href="{{ url_for('dashboard') }}">
+                        <span>📊</span> Dashboard
+                    </a>
+                    <a href="{{ url_for('statements') }}">
+                        <span>📄</span> Statements
+                    </a>
+                    <a href="{{ url_for('account_settings') }}">
+                        <span>⚙️</span> Settings
+                    </a>
+                    <a href="{{ url_for('logout') }}">
+                        <span>🚪</span> Logout
+                    </a>
                 {% else %}
-                    <a href="{{ url_for('index') }}">Home</a>
-                    <a href="{{ url_for('login') }}">Login</a>
-                    <a href="{{ url_for('register') }}">Register</a>
+                    <a href="{{ url_for('index') }}">
+                        <span>🏠</span> Home
+                    </a>
+                    <a href="{{ url_for('login') }}">
+                        <span>🔑</span> Login
+                    </a>
+                    <a href="{{ url_for('register') }}">
+                        <span>📝</span> Register
+                    </a>
                 {% endif %}
+                <button class="theme-toggle" aria-label="Toggle dark mode">🌙</button>
             </div>
         </div>
     </nav>
     
-    <main>
+    <main id="main-content" role="main">
         {% block content %}{% endblock %}
     </main>
     
-    <footer class="footer">
-        <p>&copy; 2025 Razz Bank. All rights reserved. | <a href="/terms" style="color: rgba(255,255,255,0.8);">Terms</a> | <a href="/privacy" style="color: rgba(255,255,255,0.8);">Privacy</a></p>
-        <p><small>Protected by advanced security protocols</small> <span class="security-badge">SSL SECURED</span></p>
+    <!-- Vulnerability Training Banner -->
+    {% if not session.user_id %}
+    <div class="training-banner glass-card" style="margin: 2rem auto; max-width: 1200px; padding: 1rem 2rem;">
+        <p>🎓 <strong>Educational Platform:</strong> This application contains intentional security vulnerabilities for cybersecurity training purposes. 
+        <a href="/api/status" style="color: #667eea;">View API Documentation</a></p>
+    </div>
+    {% endif %}
+    
+    <footer class="footer" role="contentinfo">
+        <div style="max-width: 1200px; margin: 0 auto; text-align: center;">
+            <p>&copy; 2025 Razz Bank Training Platform. For educational use only.</p>
+            <p>
+                <a href="/api/status" style="color: rgba(255,255,255,0.8);">API Status</a> | 
+                <a href="/robots.txt" style="color: rgba(255,255,255,0.8);">Robots</a> | 
+                <a href="/sitemap.xml" style="color: rgba(255,255,255,0.8);">Sitemap</a>
+            </p>
+            <p><small>🛡️ Security Training Environment</small> <span class="security-badge">VULNERABLE BY DESIGN</span></p>
+            
+            <!-- Vulnerability indicators for educational purposes -->
+            <div style="margin-top: 1rem; font-size: 0.8rem; opacity: 0.8;">
+                <span title="SQL Injection vulnerabilities present">💉 SQLi</span> | 
+                <span title="Insecure Direct Object Reference">🎯 IDOR</span> | 
+                <span title="Weak JWT implementation">🔐 JWT</span> | 
+                <span title="Authorization bypass">🔑 AuthZ</span>
+            </div>
+        </div>
     </footer>
     
+    <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- User context for JavaScript -->
     {% if session.user_id %}
     <script>
         document.body.dataset.userLoggedIn = 'true';
+        document.body.dataset.userId = '{{ session.user_id }}';
+        document.body.dataset.userRole = '{{ session.role }}';
     </script>
     {% endif %}
+    
+    {% block extra_scripts %}{% endblock %}
+    
+    <!-- Service Worker for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .catch(() => console.log('Service Worker not available'));
+        }
+    </script>
 </body>
 </html>
