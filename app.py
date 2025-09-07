@@ -9,10 +9,30 @@ import sqlite3
 import hashlib
 import secrets
 import os
-from datetime import datetime
+import jwt
+import redis
+from datetime import datetime, timedelta
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
+
+# JWT Configuration - Intentionally weak for educational purposes
+JWT_SECRET = 'weak_secret_key_2024'
+JWT_ALGORITHM = 'HS256'
+
+# Database configuration
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///razz_bank.db')
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+# Initialize Redis client (optional, fallback gracefully)
+try:
+    redis_client = redis.from_url(REDIS_URL)
+    redis_client.ping()
+    USE_REDIS = True
+except:
+    USE_REDIS = False
+    redis_client = None
 
 # Add custom Jinja2 filters
 @app.template_filter('format_transaction_type')
@@ -25,6 +45,43 @@ def format_transaction_type(txn_type):
         'other': 'Other'
     }
     return type_map.get(txn_type, txn_type.replace('_', ' ').title())
+
+# JWT Helper Functions
+def generate_jwt_token(user_id, username, role):
+    """Generate JWT token - intentionally using weak secret for educational purposes"""
+    payload = {
+        'user_id': user_id,
+        'username': username,
+        'role': role,
+        'exp': datetime.utcnow() + timedelta(hours=24),
+        'iat': datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def verify_jwt_token(token):
+    """Verify JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def jwt_required(f):
+    """JWT authentication decorator"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if token and token.startswith('Bearer '):
+            token = token[7:]  # Remove 'Bearer ' prefix
+            payload = verify_jwt_token(token)
+            if payload:
+                request.current_user = payload
+                return f(*args, **kwargs)
+        
+        return jsonify({'error': 'Invalid or missing JWT token'}), 401
+    return decorated_function
 
 # Database initialization
 def init_db():
@@ -167,8 +224,27 @@ def login():
             session['user_id'] = user[0]
             session['username'] = user[1]
             session['role'] = user[7]
+            
+            # Check if JWT authentication is requested
+            use_jwt = request.form.get('use_jwt', False) or request.headers.get('Accept') == 'application/json'
+            
+            if use_jwt:
+                token = generate_jwt_token(user[0], user[1], user[7])
+                return jsonify({
+                    'success': True,
+                    'token': token,
+                    'user': {
+                        'id': user[0],
+                        'username': user[1],
+                        'role': user[7],
+                        'account_number': user[5]
+                    }
+                })
+            
             return redirect(url_for('dashboard'))
         else:
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'error': 'Invalid credentials'}), 401
             return render_template('login.html', error='Invalid credentials')
     
     return render_template('login.html')
@@ -344,6 +420,93 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+# IDOR Vulnerability - View any user's profile by ID
+@app.route('/profile/<int:user_id>')
+def view_profile(user_id):
+    """VULNERABLE: No authorization check - IDOR vulnerability"""
+    conn = sqlite3.connect('razz_bank.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, email, full_name, account_number, balance, role FROM users WHERE id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    return jsonify({
+        'id': user[0],
+        'username': user[1],
+        'email': user[2],
+        'full_name': user[3],
+        'account_number': user[4],
+        'balance': float(user[5]),
+        'role': user[6]
+    })
+
+# IDOR Vulnerability - View any account's transactions
+@app.route('/account/<account_number>/transactions')
+def view_account_transactions(account_number):
+    """VULNERABLE: No authorization check - IDOR vulnerability"""
+    conn = sqlite3.connect('razz_bank.db')
+    cursor = conn.cursor()
+    
+    # Get transactions for the specified account
+    cursor.execute('''
+        SELECT t.*, u.full_name as account_holder
+        FROM transactions t
+        LEFT JOIN users u ON u.account_number = t.from_account OR u.account_number = t.to_account
+        WHERE t.from_account = ? OR t.to_account = ?
+        ORDER BY t.transaction_date DESC LIMIT 20
+    ''', (account_number, account_number))
+    
+    transactions = cursor.fetchall()
+    conn.close()
+    
+    return jsonify({
+        'account_number': account_number,
+        'transactions': [
+            {
+                'id': t[0],
+                'from_account': t[1],
+                'to_account': t[2],
+                'amount': float(t[3]),
+                'description': t[4],
+                'date': t[5],
+                'type': t[6]
+            } for t in transactions
+        ]
+    })
+
+# Admin panel with weak authorization
+@app.route('/admin/users')
+def admin_users():
+    """VULNERABLE: Weak authorization check"""
+    # Check if user claims to be admin (easily bypassed)
+    is_admin = request.args.get('admin', '').lower() == 'true' or session.get('role') == 'admin'
+    
+    if not is_admin:
+        return jsonify({'error': 'Access denied - Admin privileges required'}), 403
+    
+    conn = sqlite3.connect('razz_bank.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, email, full_name, account_number, balance, role FROM users LIMIT 50')
+    users = cursor.fetchall()
+    conn.close()
+    
+    return jsonify({
+        'users': [
+            {
+                'id': u[0],
+                'username': u[1],
+                'email': u[2],
+                'full_name': u[3],
+                'account_number': u[4],
+                'balance': float(u[5]),
+                'role': u[6]
+            } for u in users
+        ]
+    })
+
 @app.route('/robots.txt')
 def robots():
     return '''User-agent: *
@@ -403,17 +566,104 @@ def health_check():
             'error': str(e)
         }), 503
 
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """JWT-based authentication endpoint"""
+    try:
+        data = request.get_json() or {}
+        username = data.get('username', '')
+        password = data.get('password', '')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        
+        # Hash the password for comparison
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
+        # Check login (vulnerable function)
+        user = check_login(username, hashed_password)
+        
+        if user:
+            token = generate_jwt_token(user[0], user[1], user[7])
+            return jsonify({
+                'success': True,
+                'token': token,
+                'user': {
+                    'id': user[0],
+                    'username': user[1],
+                    'email': user[3],
+                    'full_name': user[4],
+                    'account_number': user[5],
+                    'balance': float(user[6]),
+                    'role': user[7]
+                }
+            })
+        else:
+            return jsonify({'error': 'Invalid credentials'}), 401
+            
+    except Exception as e:
+        return jsonify({'error': 'Authentication failed'}), 500
+
+@app.route('/api/auth/verify', methods=['POST'])
+def api_verify_token():
+    """Verify JWT token"""
+    try:
+        data = request.get_json() or {}
+        token = data.get('token', '')
+        
+        if not token:
+            return jsonify({'error': 'Token required'}), 400
+        
+        payload = verify_jwt_token(token)
+        if payload:
+            return jsonify({
+                'valid': True,
+                'user': {
+                    'id': payload['user_id'],
+                    'username': payload['username'],
+                    'role': payload['role']
+                }
+            })
+        else:
+            return jsonify({'valid': False, 'error': 'Invalid token'}), 401
+            
+    except Exception as e:
+        return jsonify({'error': 'Token verification failed'}), 500
+
 @app.route('/api/status')
 def api_status():
-    """API status endpoint"""
+    """Enhanced API status endpoint"""
     return jsonify({
-        'api_version': '1.0.0',
+        'api_version': '2.0.0',
         'status': 'operational',
+        'features': {
+            'jwt_auth': True,
+            'idor_vulnerabilities': True,
+            'sql_injection': True,
+            'admin_bypass': True
+        },
         'endpoints': {
-            'login': '/login',
-            'register': '/register',
-            'dashboard': '/dashboard',
-            'health': '/health'
+            'auth': {
+                'login': '/api/auth/login',
+                'verify': '/api/auth/verify'
+            },
+            'vulnerabilities': {
+                'profile_idor': '/profile/<user_id>',
+                'account_idor': '/account/<account_number>/transactions',
+                'admin_bypass': '/admin/users?admin=true'
+            },
+            'banking': {
+                'transfer': '/api/transfer',
+                'pay_bill': '/api/pay-bill',
+                'transactions': '/api/transactions',
+                'apply_loan': '/api/apply-loan'
+            },
+            'traditional': {
+                'login': '/login',
+                'register': '/register',
+                'dashboard': '/dashboard',
+                'health': '/health'
+            }
         }
     })
 
@@ -626,3 +876,12 @@ def api_apply_loan():
 if __name__ == '__main__':
     init_db()
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+# PWA Support Routes
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
