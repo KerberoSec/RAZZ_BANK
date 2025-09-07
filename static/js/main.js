@@ -47,21 +47,16 @@ class RazzBank {
             }
         });
 
-        // Handle form submissions
-        const transferForm = document.getElementById('transferForm');
-        if (transferForm) {
-            transferForm.addEventListener('submit', (e) => this.handleTransfer(e));
-        }
-
-        const billPayForm = document.getElementById('billPayForm');
-        if (billPayForm) {
-            billPayForm.addEventListener('submit', (e) => this.handleBillPayment(e));
-        }
-
-        const loanApplicationForm = document.getElementById('loanApplicationForm');
-        if (loanApplicationForm) {
-            loanApplicationForm.addEventListener('submit', (e) => this.handleLoanApplication(e));
-        }
+        // Handle form submissions - use event delegation since forms are created dynamically
+        document.addEventListener('submit', (e) => {
+            if (e.target.id === 'transferForm') {
+                this.handleTransfer(e);
+            } else if (e.target.id === 'billPayForm') {
+                this.handleBillPayment(e);
+            } else if (e.target.id === 'loanApplicationForm') {
+                this.handleLoanApplication(e);
+            }
+        });
 
         // Auto-logout feature
         this.initAutoLogout();
