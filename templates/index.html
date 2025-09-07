@@ -3,49 +3,243 @@
 {% block content %}
 <div class="hero">
     <div class="container">
-        <h1>Welcome to Razz Bank</h1>
-        <p>Your trusted partner in secure digital banking</p>
-        <div style="margin-top: 2rem;">
-            <a href="{{ url_for('login') }}" class="btn btn-primary" style="margin-right: 1rem;">Login to Your Account</a>
-            <a href="{{ url_for('register') }}" class="btn btn-secondary">Open New Account</a>
+        <h1>🏦 Razz Bank Training Platform</h1>
+        <p>Advanced Multi-Vulnerability Web Application for Cybersecurity Education</p>
+        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                <span>🔑</span> Access Training Environment
+            </a>
+            <a href="{{ url_for('register') }}" class="btn btn-secondary btn-outline">
+                <span>📝</span> Create Training Account
+            </a>
+            <a href="/api/status" class="btn btn-secondary btn-outline">
+                <span>🔧</span> View API Documentation
+            </a>
+        </div>
+        
+        <!-- Educational Banner -->
+        <div class="glass-card" style="margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left;">
+            <h3 style="color: #fff; margin-bottom: 1rem; text-align: center;">⚠️ Educational Purpose Only</h3>
+            <p style="color: rgba(255,255,255,0.9); margin-bottom: 1rem; text-align: center;">
+                This application contains <strong>intentional security vulnerabilities</strong> designed for cybersecurity training, 
+                penetration testing education, and ethical hacking practice.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💉</div>
+                    <strong>SQL Injection</strong>
+                    <br><small>Login bypass & data extraction</small>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
+                    <strong>IDOR</strong>
+                    <br><small>Unauthorized data access</small>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔐</div>
+                    <strong>JWT Bypass</strong>
+                    <br><small>Weak token implementation</small>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔑</div>
+                    <strong>AuthZ Bypass</strong>
+                    <br><small>Admin panel access</small>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="container">
+    <!-- Enhanced Features Grid -->
     <div class="features">
-        <div class="feature-card">
-            <h3>🔒 Advanced Security</h3>
-            <p>State-of-the-art encryption and multi-factor authentication to keep your money safe.</p>
+        <div class="feature-card gradient-border">
+            <h3>🔒 Modern Authentication</h3>
+            <p>Dual authentication system with traditional sessions and JWT tokens (intentionally vulnerable for training).</p>
+            <div style="margin-top: 1rem;">
+                <span class="security-badge" style="font-size: 0.8rem;">Session-based</span>
+                <span class="security-badge" style="font-size: 0.8rem;">JWT API</span>
+            </div>
         </div>
-        <div class="feature-card">
-            <h3>💰 Digital Wallet</h3>
-            <p>Manage your finances with our intuitive digital wallet and instant transfers.</p>
+        
+        <div class="feature-card gradient-border">
+            <h3>💰 Realistic Banking Interface</h3>
+            <p>Full-featured banking simulation with transfers, bill payments, loan applications, and transaction history.</p>
+            <div style="margin-top: 1rem;">
+                <span class="security-badge" style="font-size: 0.8rem;">Real-time UI</span>
+                <span class="security-badge" style="font-size: 0.8rem;">PWA Ready</span>
+            </div>
         </div>
-        <div class="feature-card">
-            <h3>📱 Mobile Banking</h3>
-            <p>Access your accounts anywhere, anytime with our secure mobile platform.</p>
+        
+        <div class="feature-card gradient-border">
+            <h3>📱 Progressive Web App</h3>
+            <p>Modern responsive design with PWA capabilities, dark/light themes, and mobile-first approach.</p>
+            <div style="margin-top: 1rem;">
+                <span class="security-badge" style="font-size: 0.8rem;">Responsive</span>
+                <span class="security-badge" style="font-size: 0.8rem;">Offline Ready</span>
+            </div>
         </div>
-        <div class="feature-card">
-            <h3>🌐 Global Reach</h3>
-            <p>International transfers and multi-currency support for global customers.</p>
+        
+        <div class="feature-card gradient-border">
+            <h3>🌐 Comprehensive API</h3>
+            <p>RESTful APIs with vulnerability endpoints for automated testing and security research.</p>
+            <div style="margin-top: 1rem;">
+                <span class="security-badge" style="font-size: 0.8rem;">REST API</span>
+                <span class="security-badge" style="font-size: 0.8rem;">OpenAPI</span>
+            </div>
         </div>
     </div>
     
-    <div class="card" style="margin-top: 3rem;">
-        <h2>Why Choose Razz Bank?</h2>
-        <p>Founded in 2020, Razz Bank has been at the forefront of digital banking innovation. With over 1 million satisfied customers worldwide, we provide:</p>
-        <ul style="margin: 1rem 0; padding-left: 2rem;">
-            <li>Zero monthly fees on basic accounts</li>
-            <li>24/7 customer support</li>
-            <li>Competitive interest rates</li>
-            <li>Advanced fraud protection</li>
-            <li>Seamless integration with popular apps</li>
-        </ul>
+    <!-- Training Information -->
+    <div class="card gradient-border" style="margin-top: 3rem;">
+        <h2 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            🎓 Cybersecurity Training Environment
+        </h2>
+        <p>This advanced training platform is designed for security professionals, ethical hackers, and cybersecurity students to practice identifying and exploiting common web application vulnerabilities in a safe, controlled environment.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 2rem 0;">
+            <div>
+                <h3 style="color: #667eea; margin-bottom: 1rem;">🎯 Learning Objectives</h3>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #666;">
+                    <li>SQL Injection detection and exploitation</li>
+                    <li>IDOR vulnerability identification</li>
+                    <li>JWT security analysis</li>
+                    <li>Authorization bypass techniques</li>
+                    <li>API security testing</li>
+                    <li>Modern penetration testing tools</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="color: #667eea; margin-bottom: 1rem;">🛠️ Technical Features</h3>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #666;">
+                    <li>Flask backend with SQLite/PostgreSQL</li>
+                    <li>Modern responsive frontend</li>
+                    <li>Docker containerization</li>
+                    <li>Comprehensive monitoring</li>
+                    <li>Load balancing and scaling</li>
+                    <li>Progressive Web App features</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Quick Access Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">
+            <a href="/api/status" class="btn btn-outline btn-secondary" style="text-decoration: none; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📋</div>
+                <strong>API Status</strong><br>
+                <small>View available endpoints and features</small>
+            </a>
+            <a href="/login" class="btn btn-outline btn-primary" style="text-decoration: none; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🚪</div>
+                <strong>Start Training</strong><br>
+                <small>Begin vulnerability assessment</small>
+            </a>
+            <a href="/robots.txt" class="btn btn-outline btn-warning" style="text-decoration: none; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🤖</div>
+                <strong>Reconnaissance</strong><br>
+                <small>Start with basic enumeration</small>
+            </a>
+        </div>
     </div>
     
-    <div class="warning">
-        <strong>Security Notice:</strong> Never share your login credentials with anyone. Razz Bank will never ask for your password via email or phone.
+    <!-- Deployment Options -->
+    <div class="card glass-card" style="margin-top: 3rem;">
+        <h2 style="margin-bottom: 1rem;">🐳 Deployment Options</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+            <div>
+                <h3 style="color: #28a745;">Development Mode</h3>
+                <p style="color: #666; margin-bottom: 1rem;">Single container with SQLite for quick testing</p>
+                <code style="background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 4px; display: block; font-size: 0.9rem;">
+                    docker-compose --profile development up
+                </code>
+            </div>
+            <div>
+                <h3 style="color: #dc3545;">Production Mode</h3>
+                <p style="color: #666; margin-bottom: 1rem;">Full stack with PostgreSQL, Redis, monitoring</p>
+                <code style="background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 4px; display: block; font-size: 0.9rem;">
+                    docker-compose --profile production up
+                </code>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Security Warnings -->
+    <div class="warning" style="margin-top: 3rem; margin-bottom: 3rem;">
+        <h3 style="margin-bottom: 1rem; color: #dc3545;">🚨 Important Security Warnings</h3>
+        <div style="display: grid; gap: 1rem;">
+            <div style="display: flex; align-items: start; gap: 0.5rem;">
+                <span style="color: #dc3545; font-weight: bold; min-width: 20px;">❌</span>
+                <span><strong>Never deploy in production</strong> - This application contains intentional vulnerabilities</span>
+            </div>
+            <div style="display: flex; align-items: start; gap: 0.5rem;">
+                <span style="color: #dc3545; font-weight: bold; min-width: 20px;">⚠️</span>
+                <span><strong>Educational use only</strong> - For authorized security training and research purposes</span>
+            </div>
+            <div style="display: flex; align-items: start; gap: 0.5rem;">
+                <span style="color: #dc3545; font-weight: bold; min-width: 20px;">🔒</span>
+                <span><strong>Isolated environments</strong> - Deploy only in sandboxed or isolated networks</span>
+            </div>
+            <div style="display: flex; align-items: start; gap: 0.5rem;">
+                <span style="color: #dc3545; font-weight: bold; min-width: 20px;">⚖️</span>
+                <span><strong>Legal compliance</strong> - Ensure proper authorization before conducting security tests</span>
+            </div>
+        </div>
     </div>
 </div>
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add typing animation to the hero title
+    const heroTitle = document.querySelector('.hero h1');
+    const originalText = heroTitle.textContent;
+    heroTitle.textContent = '';
+    
+    let i = 0;
+    const typeWriter = () => {
+        if (i < originalText.length) {
+            heroTitle.textContent += originalText.charAt(i);
+            i++;
+            setTimeout(typeWriter, 100);
+        }
+    };
+    
+    setTimeout(typeWriter, 500);
+    
+    // Add intersection observer for feature cards animation
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+    
+    // Observe feature cards
+    document.querySelectorAll('.feature-card').forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+    });
+    
+    // Add hover effects to buttons
+    document.querySelectorAll('.btn').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}
 {% endblock %}

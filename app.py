@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Razz Bank SQL Injection Challenge
-Educational CTF Challenge for Security Training
+Razz Bank Advanced Multi-Vulnerability Training Platform
+Educational Cybersecurity Training Application
 """
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, make_response
@@ -14,16 +14,25 @@ import redis
 from datetime import datetime, timedelta
 from functools import wraps
 
+# Database imports
+try:
+    import psycopg2
+    import psycopg2.extras
+    HAS_POSTGRESQL = True
+except ImportError:
+    HAS_POSTGRESQL = False
+
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(16))
 
 # JWT Configuration - Intentionally weak for educational purposes
-JWT_SECRET = 'weak_secret_key_2024'
+JWT_SECRET = os.environ.get('JWT_SECRET', 'weak_secret_key_2024')
 JWT_ALGORITHM = 'HS256'
 
 # Database configuration
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///razz_bank.db')
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+USE_POSTGRESQL = DATABASE_URL.startswith('postgresql://') and HAS_POSTGRESQL
 
 # Initialize Redis client (optional, fallback gracefully)
 try:
@@ -33,6 +42,44 @@ try:
 except:
     USE_REDIS = False
     redis_client = None
+
+def get_db_connection():
+    """Get database connection based on configuration"""
+    if USE_POSTGRESQL:
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        return sqlite3.connect('razz_bank.db')
+
+def execute_query(query, params=None, fetch=None):
+    """Execute database query with proper connection handling"""
+    conn = get_db_connection()
+    
+    if USE_POSTGRESQL:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Convert SQLite placeholders to PostgreSQL format
+        if '?' in query:
+            query = query.replace('?', '%s')
+    else:
+        cursor = conn.cursor()
+    
+    try:
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        
+        if fetch == 'one':
+            result = cursor.fetchone()
+        elif fetch == 'all':
+            result = cursor.fetchall()
+        else:
+            result = None
+        
+        conn.commit()
+        return result
+    finally:
+        cursor.close()
+        conn.close()
 
 # Add custom Jinja2 filters
 @app.template_filter('format_transaction_type')
@@ -85,77 +132,136 @@ def jwt_required(f):
 
 # Database initialization
 def init_db():
-    conn = sqlite3.connect('razz_bank.db')
-    cursor = conn.cursor()
+    """Initialize database with proper schema for SQLite or PostgreSQL"""
     
-    # Create users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            email TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            account_number TEXT UNIQUE NOT NULL,
-            balance DECIMAL(10,2) DEFAULT 1000.00,
-            role TEXT DEFAULT 'user',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    if USE_POSTGRESQL:
+        # PostgreSQL schema
+        tables = {
+            'users': '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(255) NOT NULL,
+                    account_number VARCHAR(50) UNIQUE NOT NULL,
+                    balance DECIMAL(10,2) DEFAULT 1000.00,
+                    role VARCHAR(50) DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''',
+            'transactions': '''
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id SERIAL PRIMARY KEY,
+                    from_account VARCHAR(50),
+                    to_account VARCHAR(50),
+                    amount DECIMAL(10,2),
+                    description TEXT,
+                    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    transaction_type VARCHAR(50) DEFAULT 'transfer'
+                )
+            ''',
+            'loan_applications': '''
+                CREATE TABLE IF NOT EXISTS loan_applications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    loan_amount DECIMAL(10,2),
+                    loan_purpose TEXT,
+                    employment_status TEXT,
+                    annual_income DECIMAL(10,2),
+                    application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'pending'
+                )
+            ''',
+            'system_flags': '''
+                CREATE TABLE IF NOT EXISTS system_flags (
+                    id SERIAL PRIMARY KEY,
+                    flag_name VARCHAR(255),
+                    flag_value TEXT,
+                    description TEXT
+                )
+            '''
+        }
+    else:
+        # SQLite schema (existing)
+        tables = {
+            'users': '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    account_number TEXT UNIQUE NOT NULL,
+                    balance DECIMAL(10,2) DEFAULT 1000.00,
+                    role TEXT DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''',
+            'transactions': '''
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    from_account TEXT,
+                    to_account TEXT,
+                    amount DECIMAL(10,2),
+                    description TEXT,
+                    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    transaction_type TEXT DEFAULT 'transfer'
+                )
+            ''',
+            'loan_applications': '''
+                CREATE TABLE IF NOT EXISTS loan_applications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    loan_amount DECIMAL(10,2),
+                    loan_purpose TEXT,
+                    employment_status TEXT,
+                    annual_income DECIMAL(10,2),
+                    application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'pending',
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''',
+            'system_flags': '''
+                CREATE TABLE IF NOT EXISTS system_flags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    flag_name TEXT,
+                    flag_value TEXT,
+                    description TEXT
+                )
+            '''
+        }
     
-    # Create transactions table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            from_account TEXT,
-            to_account TEXT,
-            amount DECIMAL(10,2),
-            description TEXT,
-            transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            transaction_type TEXT DEFAULT 'transfer'
-        )
-    ''')
-    
-    # Create loan applications table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS loan_applications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            loan_amount DECIMAL(10,2),
-            loan_purpose TEXT,
-            employment_status TEXT,
-            annual_income DECIMAL(10,2),
-            application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending',
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Create flags table (hidden)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS system_flags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            flag_name TEXT,
-            flag_value TEXT,
-            description TEXT
-        )
-    ''')
+    # Create tables
+    for table_name, schema in tables.items():
+        execute_query(schema)
     
     # Insert the real flag
-    cursor.execute('''
+    flag_query = '''
+        INSERT INTO system_flags (flag_name, flag_value, description) 
+        VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
+    ''' if USE_POSTGRESQL else '''
         INSERT OR REPLACE INTO system_flags (flag_name, flag_value, description) 
-        VALUES ('admin_flag', 'RAZZ{y0U_H@v3_f()UNd_$QL_!NJ3CT10N}', 'Main challenge flag')
-    ''')
+        VALUES (?, ?, ?)
+    '''
+    
+    execute_query(flag_query, ('admin_flag', 'RAZZ{y0U_H@v3_f()UNd_$QL_!NJ3CT10N}', 'Main challenge flag'))
     
     # Create admin user
     admin_password = hashlib.sha256('admin123!@#'.encode()).hexdigest()
-    cursor.execute('''
+    admin_query = '''
+        INSERT INTO users (username, password, email, full_name, account_number, balance, role) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (username) DO NOTHING
+    ''' if USE_POSTGRESQL else '''
         INSERT OR REPLACE INTO users (username, password, email, full_name, account_number, balance, role) 
-        VALUES ('admin', ?, 'admin@razzbank.com', 'System Administrator', 'ADM001', 999999.99, 'admin')
-    ''', (admin_password,))
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    '''
     
-    # Generate 87 regular users
-    fake_users = []
+    execute_query(admin_query, ('admin', admin_password, 'admin@razzbank.com', 
+                               'System Administrator', 'ADM001', 999999.99, 'admin'))
+    
+    # Generate regular users
+    users_data = []
     for i in range(1, 88):
         username = f'user{i:03d}'
         password = hashlib.sha256(f'password{i}'.encode()).hexdigest()
@@ -164,35 +270,70 @@ def init_db():
         account_number = f'RB{i:06d}'
         balance = round(1000 + (i * 123.45), 2)
         
-        fake_users.append((username, password, email, full_name, account_number, balance, 'user'))
+        users_data.append((username, password, email, full_name, account_number, balance, 'user'))
     
-    cursor.executemany('''
+    # Batch insert users
+    users_query = '''
+        INSERT INTO users (username, password, email, full_name, account_number, balance, role) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (username) DO NOTHING
+    ''' if USE_POSTGRESQL else '''
         INSERT OR REPLACE INTO users (username, password, email, full_name, account_number, balance, role) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', fake_users)
+    '''
     
-    # Add some transactions
-    sample_transactions = [
-        ('RB000001', 'RB000002', 500.00, 'Payment for services'),
-        ('RB000003', 'RB000001', 250.75, 'Refund transaction'),
-        ('RB000002', 'RB000004', 1000.00, 'Loan payment'),
-    ]
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    cursor.executemany('''
-        INSERT OR REPLACE INTO transactions (from_account, to_account, amount, description) 
-        VALUES (?, ?, ?, ?)
-    ''', sample_transactions)
-    
-    conn.commit()
-    conn.close()
+    try:
+        if USE_POSTGRESQL:
+            psycopg2.extras.execute_batch(cursor, users_query, users_data)
+        else:
+            cursor.executemany(users_query, users_data)
+        
+        # Add sample transactions
+        sample_transactions = [
+            ('RB000001', 'RB000002', 500.00, 'Payment for services'),
+            ('RB000003', 'RB000001', 250.75, 'Refund transaction'),
+            ('RB000002', 'RB000004', 1000.00, 'Loan payment'),
+        ]
+        
+        trans_query = '''
+            INSERT INTO transactions (from_account, to_account, amount, description) 
+            VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING
+        ''' if USE_POSTGRESQL else '''
+            INSERT OR REPLACE INTO transactions (from_account, to_account, amount, description) 
+            VALUES (?, ?, ?, ?)
+        '''
+        
+        if USE_POSTGRESQL:
+            psycopg2.extras.execute_batch(cursor, trans_query, sample_transactions)
+        else:
+            cursor.executemany(trans_query, sample_transactions)
+        
+        conn.commit()
+        print(f"✅ Database initialized successfully ({'PostgreSQL' if USE_POSTGRESQL else 'SQLite'})")
+        
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
 
 # Vulnerable login function (intentionally vulnerable for educational purposes)
 def check_login(username, password):
-    conn = sqlite3.connect('razz_bank.db')
-    cursor = conn.cursor()
+    """
+    VULNERABLE SQL QUERY - This is intentionally vulnerable for the challenge
+    In production, this should NEVER be done!
+    """
+    conn = get_db_connection()
     
-    # VULNERABLE SQL QUERY - This is intentionally vulnerable for the challenge
-    # In production, this should NEVER be done!
+    if USE_POSTGRESQL:
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    else:
+        cursor = conn.cursor()
+    
+    # VULNERABLE SQL QUERY - Intentional for educational purposes
     query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
     
     try:
@@ -201,6 +342,7 @@ def check_login(username, password):
         conn.close()
         return result
     except Exception as e:
+        print(f"SQL Error (educational): {e}")
         conn.close()
         return None
 

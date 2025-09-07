@@ -1,42 +1,167 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Razz Bank{% endblock %}
+{% block title %}Login - Razz Bank Training Platform{% endblock %}
 
 {% block content %}
 <div class="container">
-    <div class="card" style="max-width: 400px; margin: 2rem auto;">
-        <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">Login to Your Account</h2>
+    <div class="card gradient-border" style="max-width: 500px; margin: 2rem auto;">
+        <h2 style="text-align: center; margin-bottom: 2rem; color: #333; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            🔐 Login to Your Account
+        </h2>
         
         {% if error %}
         <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
         
-        <form method="POST" action="{{ url_for('login') }}">
+        <form method="POST" action="{{ url_for('login') }}" id="loginForm">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" class="form-control" required 
-                       placeholder="Enter your username">
+                       placeholder="Enter your username" autocomplete="username">
             </div>
             
             <div class="form-group">
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" class="form-control" required 
-                       placeholder="Enter your password">
+                       placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            
+            <!-- JWT Authentication Option -->
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="useJWT" name="use_jwt" style="margin: 0;">
+                    <span>Use JWT Authentication</span>
+                    <span class="security-badge" style="font-size: 0.7rem; padding: 2px 6px;">API Mode</span>
+                </label>
+                <small style="color: #666; margin-top: 0.25rem; display: block;">
+                    Enable for API-based authentication with JWT tokens
+                </small>
             </div>
             
             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                Login Securely
+                <span>🔓</span> Login Securely
             </button>
         </form>
         
-        <div style="text-align: center; margin-top: 1.5rem;">
-            <p>Don't have an account? <a href="{{ url_for('register') }}" style="color: #667eea;">Register here</a></p>
-            <p><a href="#" style="color: #6c757d; font-size: 0.9rem;">Forgot your password?</a></p>
+        <!-- Quick Login Credentials for Testing -->
+        <div class="glass-card" style="margin-top: 1.5rem; padding: 1rem;">
+            <h4 style="margin-bottom: 0.5rem; color: #667eea; font-size: 1rem;">🧪 Test Credentials</h4>
+            <div style="display: grid; gap: 0.5rem; font-size: 0.9rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>Admin:</strong> 
+                    <code style="background: rgba(102, 126, 234, 0.1); padding: 2px 6px; border-radius: 4px;">admin / admin123!@#</code>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>User:</strong> 
+                    <code style="background: rgba(102, 126, 234, 0.1); padding: 2px 6px; border-radius: 4px;">user001 / password1</code>
+                </div>
+            </div>
         </div>
         
-        <div class="warning" style="margin-top: 1rem; font-size: 0.9rem;">
-            <strong>Security Tip:</strong> Always log out when using a shared computer.
+        <!-- SQL Injection Hints -->
+        <div class="warning" style="margin-top: 1rem;">
+            <h4 style="margin-bottom: 0.5rem; color: #dc3545;">⚠️ Vulnerability Testing</h4>
+            <p style="margin-bottom: 0.5rem; font-size: 0.9rem;">
+                <strong>For educational purposes:</strong> This login form is vulnerable to SQL injection.
+            </p>
+            <details style="font-size: 0.85rem;">
+                <summary style="cursor: pointer; color: #667eea;">Show SQL Injection Examples</summary>
+                <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                    <strong>Authentication Bypass:</strong><br>
+                    <code>Username: admin' OR '1'='1' --</code><br>
+                    <code>Password: anything</code><br><br>
+                    <strong>Data Extraction:</strong><br>
+                    <code>Username: admin' UNION SELECT 1,2,3,flag_value,5,6,7,8 FROM system_flags--</code><br>
+                    <code>Password: anything</code>
+                </div>
+            </details>
+        </div>
+        
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <p>Don't have an account? <a href="{{ url_for('register') }}" style="color: #667eea; text-decoration: none; font-weight: 600;">Register here</a></p>
+            <p><a href="#" style="color: #6c757d; font-size: 0.9rem; text-decoration: none;">Forgot your password?</a></p>
+        </div>
+        
+        <!-- Educational Security Information -->
+        <div class="glass-card" style="margin-top: 1rem; padding: 1rem; border-left: 4px solid var(--info-color);">
+            <h4 style="margin-bottom: 0.5rem; color: var(--info-color); font-size: 0.9rem;">🛡️ Security Notice</h4>
+            <p style="margin: 0; font-size: 0.8rem; color: #666;">
+                This is an educational environment with intentional vulnerabilities. 
+                Always use strong, unique passwords and enable 2FA in real applications.
+            </p>
         </div>
     </div>
 </div>
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const useJWTCheckbox = document.getElementById('useJWT');
+    
+    // Auto-fill credentials for demo purposes
+    const quickFillButtons = document.createElement('div');
+    quickFillButtons.style.cssText = 'margin-top: 1rem; text-align: center; display: flex; gap: 0.5rem; justify-content: center;';
+    quickFillButtons.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-outline" style="font-size: 0.8rem; padding: 0.5rem 1rem;" onclick="fillCredentials('admin', 'admin123!@#')">
+            👑 Fill Admin
+        </button>
+        <button type="button" class="btn btn-secondary btn-outline" style="font-size: 0.8rem; padding: 0.5rem 1rem;" onclick="fillCredentials('user001', 'password1')">
+            👤 Fill User
+        </button>
+    `;
+    form.appendChild(quickFillButtons);
+    
+    // JWT mode indicator
+    useJWTCheckbox.addEventListener('change', function() {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (this.checked) {
+            submitBtn.innerHTML = '<span>🔐</span> Login with JWT';
+            submitBtn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+        } else {
+            submitBtn.innerHTML = '<span>🔓</span> Login Securely';
+            submitBtn.style.background = '';
+        }
+    });
+    
+    // Enhanced form validation
+    form.addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<div class="loading-spinner" style="width: 20px; height: 20px; margin: 0 auto;"></div>';
+        submitBtn.disabled = true;
+        
+        // Detect potential SQL injection attempts
+        if (window.razzBank && window.razzBank.detectSQLInjection(username)) {
+            // Allow it to proceed for educational purposes but show warning
+            window.razzBank.showAlert('SQL injection payload detected - this is allowed for educational purposes', 'warning');
+        }
+        
+        // Reset button after delay (in case of no redirect)
+        setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 5000);
+    });
+});
+
+// Helper function for quick credential filling
+function fillCredentials(username, password) {
+    document.getElementById('username').value = username;
+    document.getElementById('password').value = password;
+    
+    // Add visual feedback
+    const form = document.getElementById('loginForm');
+    form.style.transform = 'scale(1.02)';
+    form.style.transition = 'transform 0.2s ease';
+    setTimeout(() => {
+        form.style.transform = 'scale(1)';
+    }, 200);
+}
+</script>
+{% endblock %}
 {% endblock %}
