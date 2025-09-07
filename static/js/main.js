@@ -29,6 +29,12 @@ class RazzBank {
             billPayBtn.addEventListener('click', () => this.showBillPayModal());
         }
 
+        // Handle loan application modal
+        const loanApplyBtn = document.querySelector('.loan-apply-btn');
+        if (loanApplyBtn) {
+            loanApplyBtn.addEventListener('click', () => this.showLoanApplicationModal());
+        }
+
         // Handle modal close buttons
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.addEventListener('click', (e) => this.closeModal(e));
@@ -41,11 +47,16 @@ class RazzBank {
             }
         });
 
-        // Handle form submissions
-        const transferForm = document.getElementById('transferForm');
-        if (transferForm) {
-            transferForm.addEventListener('submit', (e) => this.handleTransfer(e));
-        }
+        // Handle form submissions - use event delegation since forms are created dynamically
+        document.addEventListener('submit', (e) => {
+            if (e.target.id === 'transferForm') {
+                this.handleTransfer(e);
+            } else if (e.target.id === 'billPayForm') {
+                this.handleBillPayment(e);
+            } else if (e.target.id === 'loanApplicationForm') {
+                this.handleLoanApplication(e);
+            }
+        });
 
         // Auto-logout feature
         this.initAutoLogout();
@@ -187,6 +198,66 @@ class RazzBank {
         return document.getElementById('billPayModal');
     }
 
+    showLoanApplicationModal() {
+        const modal = document.getElementById('loanApplicationModal') || this.createLoanApplicationModal();
+        modal.style.display = 'block';
+    }
+
+    createLoanApplicationModal() {
+        const modalHtml = `
+            <div id="loanApplicationModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Apply for Loan</h2>
+                    <form id="loanApplicationForm">
+                        <div class="form-group">
+                            <label for="loanAmount">Loan Amount ($):</label>
+                            <input type="number" id="loanAmount" name="loanAmount" class="form-control amount-input" step="0.01" min="1000" max="500000" required>
+                            <small>Minimum: $1,000 | Maximum: $500,000</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="loanPurpose">Loan Purpose:</label>
+                            <select id="loanPurpose" name="loanPurpose" class="form-control" required>
+                                <option value="">Select Purpose</option>
+                                <option value="home-purchase">Home Purchase</option>
+                                <option value="home-improvement">Home Improvement</option>
+                                <option value="debt-consolidation">Debt Consolidation</option>
+                                <option value="business">Business Investment</option>
+                                <option value="education">Education</option>
+                                <option value="medical">Medical Expenses</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="employmentStatus">Employment Status:</label>
+                            <select id="employmentStatus" name="employmentStatus" class="form-control" required>
+                                <option value="">Select Status</option>
+                                <option value="full-time">Full-time Employee</option>
+                                <option value="part-time">Part-time Employee</option>
+                                <option value="self-employed">Self-employed</option>
+                                <option value="contract">Contract Worker</option>
+                                <option value="unemployed">Unemployed</option>
+                                <option value="retired">Retired</option>
+                                <option value="student">Student</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="annualIncome">Annual Income ($):</label>
+                            <input type="number" id="annualIncome" name="annualIncome" class="form-control" min="0" step="1000" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Submit Application</button>
+                            <button type="button" class="btn btn-secondary" onclick="razzBank.closeModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        return document.getElementById('loanApplicationModal');
+    }
+
     closeModal(e) {
         const modal = e ? e.target.closest('.modal') : document.querySelector('.modal[style*="block"]');
         if (modal) {
@@ -216,13 +287,117 @@ class RazzBank {
         // Show loading state
         this.showLoading('Processing transfer...');
 
-        // Simulate API call (in real app, this would be an actual API call)
-        setTimeout(() => {
+        // Make actual API call
+        fetch('/api/transfer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(transferData)
+        })
+        .then(response => response.json())
+        .then(data => {
             this.hideLoading();
-            this.showAlert('Transfer completed successfully!', 'success');
-            this.closeModal();
-            this.updateAccountInfo();
-        }, 2000);
+            if (data.success) {
+                this.showAlert(data.message, 'success');
+                this.closeModal();
+                this.updateAccountInfo();
+                this.loadRecentTransactions();
+            } else {
+                this.showAlert(data.error || 'Transfer failed', 'danger');
+            }
+        })
+        .catch(error => {
+            this.hideLoading();
+            this.showAlert('Transfer failed: Network error', 'danger');
+        });
+    }
+
+    handleBillPayment(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const billData = {
+            payee: formData.get('payee'),
+            amount: parseFloat(formData.get('billAmount')),
+            payDate: formData.get('payDate')
+        };
+
+        if (!billData.payee || billData.amount <= 0 || !billData.payDate) {
+            this.showAlert('Please fill in all required fields', 'danger');
+            return;
+        }
+
+        // Show loading state
+        this.showLoading('Processing bill payment...');
+
+        // Make actual API call
+        fetch('/api/pay-bill', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(billData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.hideLoading();
+            if (data.success) {
+                this.showAlert(data.message, 'success');
+                this.closeModal();
+                this.updateAccountInfo();
+                this.loadRecentTransactions();
+            } else {
+                this.showAlert(data.error || 'Bill payment failed', 'danger');
+            }
+        })
+        .catch(error => {
+            this.hideLoading();
+            this.showAlert('Bill payment failed: Network error', 'danger');
+        });
+    }
+
+    handleLoanApplication(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const loanData = {
+            loanAmount: parseFloat(formData.get('loanAmount')),
+            loanPurpose: formData.get('loanPurpose'),
+            employmentStatus: formData.get('employmentStatus'),
+            annualIncome: parseFloat(formData.get('annualIncome'))
+        };
+
+        if (!loanData.loanAmount || !loanData.loanPurpose || !loanData.employmentStatus || !loanData.annualIncome) {
+            this.showAlert('Please fill in all required fields', 'danger');
+            return;
+        }
+
+        // Show loading state
+        this.showLoading('Submitting loan application...');
+
+        // Make actual API call
+        fetch('/api/apply-loan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loanData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.hideLoading();
+            if (data.success) {
+                this.showAlert(data.message, 'success');
+                this.closeModal();
+            } else {
+                this.showAlert(data.error || 'Loan application failed', 'danger');
+            }
+        })
+        .catch(error => {
+            this.hideLoading();
+            this.showAlert('Loan application failed: Network error', 'danger');
+        });
     }
 
     validateTransfer(data) {
@@ -374,22 +549,38 @@ class RazzBank {
         const transactionContainer = document.getElementById('recentTransactions');
         if (!transactionContainer) return;
 
-        // Simulate loading recent transactions
+        // Show loading state
         this.showLoading('Loading transactions...', transactionContainer);
 
-        setTimeout(() => {
+        // Load real transactions from API
+        fetch('/api/transactions')
+        .then(response => response.json())
+        .then(data => {
+            if (data.transactions) {
+                this.renderTransactions(data.transactions, transactionContainer);
+            } else {
+                transactionContainer.innerHTML = '<p style="color: #666; text-align: center;">No transactions found</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading transactions:', error);
+            // Fallback to mock data if API fails
             const mockTransactions = [
-                { date: '2025-01-06', description: 'Online Purchase', amount: -45.99, balance: 2954.01 },
-                { date: '2025-01-05', description: 'Salary Deposit', amount: 2500.00, balance: 3000.00 },
-                { date: '2025-01-04', description: 'Transfer to John', amount: -150.00, balance: 500.00 },
-                { date: '2025-01-03', description: 'ATM Withdrawal', amount: -100.00, balance: 650.00 }
+                { date: '2025-01-06', description: 'Online Purchase', amount: -45.99, type: 'purchase' },
+                { date: '2025-01-05', description: 'Salary Deposit', amount: 2500.00, type: 'deposit' },
+                { date: '2025-01-04', description: 'Transfer to John', amount: -150.00, type: 'transfer' },
+                { date: '2025-01-03', description: 'ATM Withdrawal', amount: -100.00, type: 'withdrawal' }
             ];
-
             this.renderTransactions(mockTransactions, transactionContainer);
-        }, 1000);
+        });
     }
 
     renderTransactions(transactions, container) {
+        if (!transactions || transactions.length === 0) {
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No recent transactions</p>';
+            return;
+        }
+
         const tableHtml = `
             <table class="transaction-table">
                 <thead>
@@ -397,7 +588,7 @@ class RazzBank {
                         <th>Date</th>
                         <th>Description</th>
                         <th>Amount</th>
-                        <th>Balance</th>
+                        <th>Type</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -408,7 +599,7 @@ class RazzBank {
                             <td class="transaction-amount ${t.amount > 0 ? 'positive' : 'negative'}">
                                 ${t.amount > 0 ? '+' : ''}$${Math.abs(t.amount).toFixed(2)}
                             </td>
-                            <td>$${t.balance.toFixed(2)}</td>
+                            <td>${this.formatTransactionType(t.type)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -416,6 +607,17 @@ class RazzBank {
         `;
         
         container.innerHTML = tableHtml;
+    }
+
+    formatTransactionType(type) {
+        const typeMap = {
+            'transfer': 'Transfer',
+            'bill_payment': 'Bill Payment',
+            'deposit': 'Deposit',
+            'withdrawal': 'Withdrawal',
+            'purchase': 'Purchase'
+        };
+        return typeMap[type] || type;
     }
 
     updateAccountInfo() {

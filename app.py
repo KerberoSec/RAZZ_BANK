@@ -42,7 +42,23 @@ def init_db():
             to_account TEXT,
             amount DECIMAL(10,2),
             description TEXT,
-            transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            transaction_type TEXT DEFAULT 'transfer'
+        )
+    ''')
+    
+    # Create loan applications table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS loan_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            loan_amount DECIMAL(10,2),
+            loan_purpose TEXT,
+            employment_status TEXT,
+            annual_income DECIMAL(10,2),
+            application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
     
@@ -268,6 +284,212 @@ def api_status():
             'health': '/health'
         }
     })
+
+@app.route('/api/transfer', methods=['POST'])
+def api_transfer():
+    """Handle money transfers between accounts"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        to_account = data.get('toAccount', '').strip()
+        amount = float(data.get('amount', 0))
+        description = data.get('description', 'Transfer').strip()
+        
+        if not to_account or amount <= 0:
+            return jsonify({'error': 'Invalid transfer details'}), 400
+            
+        if amount > 10000:
+            return jsonify({'error': 'Daily transfer limit exceeded ($10,000)'}), 400
+        
+        conn = sqlite3.connect('razz_bank.db')
+        cursor = conn.cursor()
+        
+        # Get sender's account info
+        cursor.execute('SELECT account_number, balance FROM users WHERE id = ?', (session['user_id'],))
+        sender = cursor.fetchone()
+        
+        if not sender:
+            conn.close()
+            return jsonify({'error': 'Account not found'}), 404
+            
+        if sender[1] < amount:
+            conn.close()
+            return jsonify({'error': 'Insufficient funds'}), 400
+        
+        # Check if recipient account exists
+        cursor.execute('SELECT id FROM users WHERE account_number = ?', (to_account,))
+        recipient = cursor.fetchone()
+        
+        if not recipient:
+            conn.close()
+            return jsonify({'error': 'Recipient account not found'}), 404
+        
+        # Update balances
+        cursor.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (amount, session['user_id']))
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE account_number = ?', (amount, to_account))
+        
+        # Record transaction
+        cursor.execute('''
+            INSERT INTO transactions (from_account, to_account, amount, description) 
+            VALUES (?, ?, ?, ?)
+        ''', (sender[0], to_account, amount, description))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Transfer completed successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': 'Transfer failed'}), 500
+
+@app.route('/api/pay-bill', methods=['POST'])
+def api_pay_bill():
+    """Handle bill payments"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        payee = data.get('payee', '').strip()
+        amount = float(data.get('amount', 0))
+        pay_date = data.get('payDate', '')
+        
+        if not payee or amount <= 0:
+            return jsonify({'error': 'Invalid bill payment details'}), 400
+            
+        conn = sqlite3.connect('razz_bank.db')
+        cursor = conn.cursor()
+        
+        # Get user's account info
+        cursor.execute('SELECT account_number, balance FROM users WHERE id = ?', (session['user_id'],))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({'error': 'Account not found'}), 404
+            
+        if user[1] < amount:
+            conn.close()
+            return jsonify({'error': 'Insufficient funds'}), 400
+        
+        # Update balance
+        cursor.execute('UPDATE users SET balance = balance - ? WHERE id = ?', (amount, session['user_id']))
+        
+        # Record bill payment transaction
+        cursor.execute('''
+            INSERT INTO transactions (from_account, to_account, amount, description) 
+            VALUES (?, ?, ?, ?)
+        ''', (user[0], payee.upper(), amount, f'Bill payment to {payee}'))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Bill payment scheduled successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': 'Bill payment failed'}), 500
+
+@app.route('/api/transactions')
+def api_transactions():
+    """Get user's transaction history"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        conn = sqlite3.connect('razz_bank.db')
+        cursor = conn.cursor()
+        
+        # Get user's account number
+        cursor.execute('SELECT account_number FROM users WHERE id = ?', (session['user_id'],))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({'error': 'Account not found'}), 404
+        
+        account_number = user[0]
+        
+        # Get transactions for this account (simplified query)
+        cursor.execute('''
+            SELECT transaction_date, description, amount, from_account, to_account
+            FROM transactions 
+            WHERE from_account = ? OR to_account = ?
+            ORDER BY transaction_date DESC 
+            LIMIT 10
+        ''', (account_number, account_number))
+        
+        transactions = cursor.fetchall()
+        conn.close()
+        
+        # Format transactions for frontend
+        formatted_transactions = []
+        for txn in transactions:
+            # Determine if this is credit or debit
+            is_credit = txn[4] == account_number and txn[3] != account_number
+            amount = txn[2] if is_credit else -txn[2]
+            
+            # Determine transaction type based on description
+            description = txn[1].lower()
+            if 'bill payment' in description:
+                txn_type = 'bill_payment'
+            elif 'transfer' in description:
+                txn_type = 'transfer'
+            elif 'deposit' in description or 'salary' in description:
+                txn_type = 'deposit'
+            elif 'withdrawal' in description or 'atm' in description:
+                txn_type = 'withdrawal'
+            else:
+                txn_type = 'other'
+            
+            formatted_transactions.append({
+                'date': txn[0].split(' ')[0] if ' ' in txn[0] else txn[0],
+                'description': txn[1],
+                'amount': amount,
+                'type': txn_type
+            })
+        
+        return jsonify({'transactions': formatted_transactions})
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to load transactions'}), 500
+
+@app.route('/api/apply-loan', methods=['POST'])
+def api_apply_loan():
+    """Handle loan applications"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        loan_amount = float(data.get('loanAmount', 0))
+        loan_purpose = data.get('loanPurpose', '').strip()
+        employment_status = data.get('employmentStatus', '').strip()
+        annual_income = float(data.get('annualIncome', 0))
+        
+        if not all([loan_amount > 0, loan_purpose, employment_status, annual_income > 0]):
+            return jsonify({'error': 'All fields are required'}), 400
+            
+        if loan_amount > 500000:
+            return jsonify({'error': 'Loan amount exceeds maximum limit ($500,000)'}), 400
+        
+        conn = sqlite3.connect('razz_bank.db')
+        cursor = conn.cursor()
+        
+        # Insert loan application
+        cursor.execute('''
+            INSERT INTO loan_applications (user_id, loan_amount, loan_purpose, employment_status, annual_income) 
+            VALUES (?, ?, ?, ?, ?)
+        ''', (session['user_id'], loan_amount, loan_purpose, employment_status, annual_income))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Loan application submitted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': 'Loan application failed'}), 500
 
 if __name__ == '__main__':
     init_db()
